@@ -152,8 +152,8 @@ def _(mo):
         I1 -- "w0" -->A1
         I1 -- "w1" --> A2
 
-    
-    
+
+
         I2 -- "w2" --> A1
         I2 -- "w3" --> A2
 
@@ -406,7 +406,7 @@ def _():
         ytrn = np.array([0]*35 + [1]*35)
         xtst = np.vstack((x[35:50],x[85:]))
         ytst = np.array([0]*15+[1]*15)
-    
+
         idx = np.argsort(np.random.random(70))
         xtrn = xtrn[idx]
         ytrn = ytrn[idx]
@@ -439,7 +439,7 @@ def _():
         out = Forward(net, x)
         tn = fp = fn = tp = 0
         pred = []
-    
+
         for i in range(len(y)):
             c = 0 if (out[i] < 0.5) else 1
             pred.append(c)
@@ -451,10 +451,10 @@ def _():
                 fp += 1
             else:
                 tp += 1
-    
+
         return tn,fp,fn,tp,pred
 
-    
+
     def GradientDescent(net, x, y, epochs, eta):
         """Perform gradient descent"""
 
@@ -593,6 +593,340 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Red Completamente Conectada
+
+    Una Red *Completamente Conectada* representa la arquitectura más popular y simple de redes neuronales. Cada neurona de la capa previa es conectada a cada neurona de la capa siguiente. De manera que si la capa previa tiene $m$ neuronas y la siguiente capa tiene $n$ neuronas, habrán $m \times n$ conexiones, cada una con su propio peso.
+
+    El peso de la conexión de la $k$-ésima neurona en la capa $(l-1)$ a la neurona $j$-ésima en la capa $l$ se denota $w_{jk}^{(l)}$. Aquí, el orden de los subíndices es el destino (j) seguido del origen (k). Esto es ligeramente contraintuitivo, pero se sigue universalmente porque simplifica la notación matricial.
+
+
+    La siguiente figura muestra una Red *Completamente Conectada*. En la Red la Capa lineal $l$ se genera a partir de la capa $(l − 1)$. Los pesos que pertenecen a la fila 1 de la matriz de pesos (provenientes de todas las neuronas de entrada, capa $(l − 1)$, que se suman para formar la neurona de salida 1) se muestran en negrita.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(src="images/fully_connected.png", width=600, caption="Red Completamente Conectada")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Sea $a_0^{(l-1)}, a_1^{(l-1)}, \cdots, a_m^{(l-1)}$ valores que representan la salidas de las $m$ neuronas en la capa $(l-1)$. Sea $a_0^{(l)}, a_1^{(l)}, \cdots, a_n^{(l)}$ valores que representan las salidas de las $n$ neuronas en la capa $l$. Nota que tipicamente usamos el símbolo $a$, que representa la activación, para denotar la salida de neuronas individuales. Considera la $j$-ésima neurona de la capa $l$. Especialmente la neurona $z_1^{l}$. Observe los pesos que entran en él y las activaciones en su origen. Su salida es $a_j^{(l)}$, donde :
+
+    $$
+    \left.\begin{array}{l}
+    z_j^{(l)}=\sum_{k=0}^m w_{j k}^{(l)} a_k^{(l-1)}+b_j^{(l)} \\
+    a_j^{(l)}=\sigma\left(z_j^{(l)}\right)
+    \end{array}\right\} \text { for } j=0 \cdots n
+    $$
+
+    Podemos reescribir la suma en esas ecuaciones como un producto punto entre los vectores de peso y activación :
+
+    $$
+    \left.\begin{array}{l}
+    z_j^{(l)}=\left[\begin{array}{cccc}
+    w_{j 0}^{(l)} & w_{j 1}^{(l)} & \cdots & w_{j m}^{(l)}
+    \end{array}\right]\left[\begin{array}{c}
+    a_0^{(l-1)} \\
+    a_1^{(l-1)} \\
+    \ldots \\
+    a_m^{(l-1)}
+    \end{array}\right]+b_j^{(l)} \\
+    a_j^{(l)}=\sigma\left(z_j^{(l)}\right)
+    \end{array}\right\} \text { for } j=0 \cdots n
+    $$
+
+    El conjunto completo de ecuaciones para todas las capas $j$ puede escribirse de forma compacta usando multiplicaciones de vectores y matrices,
+
+    $$
+    \begin{aligned}
+    & \vec{z}^{(l)}=W^{(l)} \vec{a}^{(l-1)}+\vec{b}^{(l)} \\
+    & \vec{a}^{(l)}=\sigma\left(\vec{z}^{(l)}\right)
+    \end{aligned}
+    $$
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    donde
+    - $W^{(l)}$ es una matriz $n \times m$ que representa los pesos de **todas las conexiones de la capa** $l-1$ **a la capa** $l$:
+
+    $$
+        W^{(l)}=\left[\begin{array}{cccc}
+        w_{00}^{(l)} & w_{01}^{(l)} & \cdots & w_{0 m}^{(l)} \\
+        w_{10}^{(l)} & w_{11}^{(l)} & \cdots & w_{1 m}^{(l)} \\
+        \vdots & & & \\
+        w_{j 0}^{(l)} & w_{j 1}^{(l)} & \cdots & w_{j m}^{(l)} \\
+        \vdots & & & \\
+        w_{n 0}^{(l)} & w_{n 1}^{(l)} & \cdots & w_{n m}^{(l)}
+        \end{array}\right]
+    $$
+
+    - $\vec{a}^{(l)}$ representa las activaciones de la capa completa $l$. Aplicar la función sigmoide a un vector equivale a aplicarla individualmente a cada elemento del vector.
+
+    $$
+    \begin{array}{ll}
+    \vec{a}^{(l)}=\left[\begin{array}{c}
+    a_0^{(l)} \\
+    a_1^{(l)} \\
+    \ldots \\
+    a_n^{(l)}
+    \end{array}\right] & \vec{a}^{(l-1)}=\left[\begin{array}{c}
+    a_0^{(l-1)} \\
+    a_1^{(l-1)} \\
+    \ldots \\
+    \ldots \\
+    a_m^{(l-1)}
+    \end{array}\right] \\
+    \vec{z}^{(l)}=\left[\begin{array}{c}
+    z_0^{(l)} \\
+    z_1^{(l)} \\
+    \ldots \\
+    z_n^{(l)}
+    \end{array}\right] & \sigma\left(\vec{z}^{(l)}\right)=\left[\begin{array}{c}
+    \sigma\left(z_0^{(l)}\right) \\
+    \sigma\left(z_1^{(l)}\right) \\
+    \ldots \\
+    \sigma\left(z_n^{(l)}\right)
+    \end{array}\right]
+    \end{array}
+    $$
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    **Observación** : Las capa de una red completamente conectada pueden pensarse como vectores de funciones:
+
+    $$
+    \boldsymbol{y}=\boldsymbol{f(x)}
+    $$
+
+    donde la entrada de la capa es $\boldsymbol{x}$ y la salida es $\boldsymbol{y}$. La entrada $\boldsymbol{x}$ es la entrada a la red para una muestra de entrenamiento o, si se trabaja con una de las capas ocultas del modelo, la salida de la capa anterior. Ambos son vectores: Cada nodo de una capa produce una única salida escalar que, al agruparse, forma $\boldsymbol{y}$, un vector que representa la salida de la capa.
+
+    El pase hacia adelante recorre las capas de la red en orden, realizando un mapeo de $\boldsymbol{x}_i$ a $\boldsymbol{y}_i$de manera que $\boldsymbol{y}_i$ se convierte en $\boldsymbol{x}_{i+1}$, la entrada a la capa $i+1$. Después que todas las capas son procesadas, usamos la salida de la capa final, llamémosla $\boldsymbol{h}$, para calcular la perdida, $L =(\boldsymbol{x},\boldsymbol{y_\text{true}})$. La pérdida es una medida de cuánto se equivoca la red respecto a la entrada $x$, la cual determinamos comparándola con la etiqueta verdadera $\boldsymbol{y_\text{true}}$.
+
+    Necesitamos propagar el valor de pérdida, o el **error**, hacia atrás a través de la red; este es el **backpropagation step**. Para hacer esto para una red totalmente conectada que utiliza vectores por capa y matrices de pesos, primero debemos ver cómo ejecutar el **forward pass**.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Para una capa completamente conectada el forward pass es
+
+
+    $$
+    \boldsymbol{y} = \boldsymbol{W}\boldsymbol{x} + \boldsymbol{b}
+    $$
+
+    donde $\boldsymbol{W}$ es la matriz de pesos, $\boldsymbol{x}$ es el vector de entrada, y $\boldsymbol{b}$ es el vector de sesgos.
+
+    Para una capa de activación tenemos :
+
+    $$
+    \boldsymbol{y} = \boldsymbol{\sigma}(\boldsymbol{x})
+    $$
+
+    para cualquier función de activación $\boldsymbol{\sigma}$ (Nosotros continuaremos usando la función sigmoide). Aplicamos la función sigmoide escalar a cada elemento del vector de entrada para obtener el vector de salida:
+
+    $$
+    \boldsymbol{\sigma}(\boldsymbol{x})=\left[\sigma\left(x_0\right) \sigma\left(x_1\right) \ldots \sigma\left(x_{n-1}\right)\right]^{\top}
+    $$
+
+    La propagación hacia adelante conduce al resultado final y a la función de pérdida. La derivada de la función de pérdida con respecto a la salida de la red constituye el primer término de error. Para propagar dicho término de error hacia atrás a través del modelo, es necesario calcular cómo varía este en función de un cambio en la entrada de una capa, utilizando para ello la información sobre cómo cambia el error ante una modificación en la salida de la misma capa. En concreto, para cada capa, debemos saber cómo calcular
+
+    $$
+    \frac{\partial E}{\partial \boldsymbol{x}}
+    $$
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    necesitamos saber cómo varía el término de error ante un cambio en la entrada a la capa dado :
+
+    $$
+    \frac{\partial E}{\partial \boldsymbol{y}}
+    $$
+
+    es decir, cómo cambia el término de error ante una variación en la salida de la capa. La regla de la cadena nos indica cómo hacerlo:
+
+    $$
+    \frac{\partial E}{\partial \boldsymbol{x}}=\frac{\partial E}{\partial \boldsymbol{y}} \frac{\partial \boldsymbol{y}}{\partial \boldsymbol{x}}
+    $$
+
+    donde $\partial E / \partial \mathbf{x}$ para la capa $l$ se convierte en $\partial E / \partial y$ para la capa $l-1$ en la medida que nos movemos hacia atrás en la red.
+
+    Operacionalmente, el algoritmo Backpropagation sigue los siguientes pasos:
+
+    - Ejecutar las propapagión hacia adelante para mapear $\boldsymbol{x} \rightarrow \boldsymbol{y}$, capa por capa, para obtener la capa de salida $\boldsymbol{h}$.
+    - Calcular el valor de la derivada de la función de pérdida usando $\boldsymbol{h}$ y $\boldsymbol{y_{\text{true}}}$; $\partial E / \partial y$ para la capa de salida.
+    - Repetir el procedimiento para todas las capas anteriores a fin de realizar el cálculo $\partial E / \partial \mathbf{x}$ a partir de $\partial E / \partial y$, generando que $\partial E / \partial \mathbf{x}$ para la capa $l$ se convierte en $\partial E / \partial y$ para la capa $l-1$
+
+    Este algoritmo propaga el término de error hacia atrás a través de la red. Veamos cómo obtener las derivadas parciales necesarias según el tipo de capa, comenzando por la capa de activación.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Asumiremos que conocemos $\partial E / \partial y$ y que nuestro objetivo es $\partial E / \partial \mathbf{x}$. La regla de la cadena nos diría:
+
+    $$
+    \begin{aligned}
+    \frac{\partial E}{\partial \boldsymbol{x}} & =\frac{\partial E}{\partial y} \frac{\partial \boldsymbol{y}}{\partial \boldsymbol{x}} \\
+    & =\left[\frac{\partial E}{\partial y_0} \frac{\partial y_0}{\partial x_0} \frac{\partial E}{\partial y_1} \frac{\partial y_1}{\partial x_1} \ldots\right]^{\top} \\
+    & =\left[\frac{\partial E}{\partial y_0} \sigma^{\prime}\left(x_0\right) \frac{\partial E}{\partial y_1} \sigma^{\prime}\left(x_1\right) \ldots\right]^{\top} \\
+    & =\frac{\partial E}{\partial y} \odot \sigma^{\prime}(\boldsymbol{x})
+    \end{aligned}
+    $$
+
+    donde introducimos $\odot$ para representar el producto Hadamard.
+
+
+    /// attention | Producto Hadamard
+    El producto Hadamard es la multiplicación elemento por elemento de dos vectores o matrices
+    ///
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Ahora sabemos cómo propagar el término de error a través de una capa de activación. La única otra capa que estamos considerando es una capa totalmente conectada. Si desarrollamos la Ecuación 10.9, obtenemos
+
+    $$
+    \begin{aligned}
+    \frac{\partial E}{\partial \boldsymbol{x}} & =\frac{\partial E}{\partial \boldsymbol{y}} \frac{\partial \boldsymbol{y}}{\partial \boldsymbol{x}} \\
+    & =\boldsymbol{W}^{\top} \frac{\partial E}{\partial \boldsymbol{y}}
+    \end{aligned}
+    $$
+
+    dado que
+
+    $$
+    \frac{\partial \boldsymbol{y}}{\partial \boldsymbol{x}}=\frac{\partial(\boldsymbol{W} \boldsymbol{x}+\boldsymbol{b})}{\partial \boldsymbol{x}}=\boldsymbol{W}^{\top}
+    $$
+
+    el resultado es $\boldsymbol{W}^{\top}$ y no $\boldsymbol{W}$ porque la derivada de una matriz por un vector, en la notación de denominador, es la transpuesta de la matriz en lugar de la matriz misma.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Cálculo de las Derivadas Parciales de los Pesos y Sesgos
+
+    Las ecuaciones 10.10 y 10.11 nos indican cómo propagar el término de error hacia atrás a través de la red. Sin embargo, el objetivo de la backpropagation es calcular cómo afectan al error los cambios en los pesos y los sesgos, de modo que podamos utilizar el descenso de gradiente. En concreto, para cada capa totalmente conectada, necesitamos expresiones para
+
+    $$
+    \frac{\partial E}{\partial \boldsymbol{W}} \text { y } \frac{\partial E}{\partial \boldsymbol{b}}
+    $$
+
+    dado
+
+    $$
+    \frac{\partial E}{\partial y} \text { and } \frac{\partial E}{\partial \boldsymbol{x}}
+    $$
+
+    Comencemos con $\partial E / \partial \mathbf{b}$. Aplicando la regla de la cadena una vez más se obtiene
+
+    $$
+    \begin{aligned}
+    \frac{\partial E}{\partial \boldsymbol{b}} & =\frac{\partial E}{\partial \boldsymbol{y}} \frac{\partial \boldsymbol{y}}{\partial \boldsymbol{b}} \\
+    & =\frac{\partial E}{\partial \boldsymbol{y}} \frac{\partial(\boldsymbol{W} \boldsymbol{x}+\boldsymbol{b})}{\partial \boldsymbol{b}} \\
+    & =\frac{\partial E}{\partial \boldsymbol{y}}(\mathbf{0}+\mathbf{1}) \\
+    & =\frac{\partial E}{\partial \boldsymbol{y}}
+    \end{aligned}
+    $$
+
+    lo que significa que el error debido al término de sesgo de una capa totalmente conectada es igual al error debido a la salida.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Es similar el cálculo para la matriz de pesos
+
+    $$
+    \begin{aligned}
+    \frac{\partial E}{\partial \boldsymbol{W}} & =\frac{\partial E}{\partial \boldsymbol{y}} \frac{\partial \boldsymbol{y}}{\partial \boldsymbol{W}} \\
+    & =\frac{\partial E}{\partial \boldsymbol{y}} \frac{\partial(\boldsymbol{W} \boldsymbol{x}+\boldsymbol{b})}{\partial \boldsymbol{W}} \\
+    & =\frac{\partial E}{\partial \boldsymbol{y}}\left(\boldsymbol{x}^{\top}+\mathbf{0}\right) \\
+    & =\frac{\partial E}{\partial \boldsymbol{y}} \boldsymbol{x}^{\top}
+    \end{aligned}
+    $$
+
+    La ecuación nos dice que el error debido a la matriz de pesos es el producto del error de la salida y de la entrada $\boldsymbol{x}$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Las ecuaciones 10.10, 10.12, 10.12 y 10.13 se aplican a un único ejemplo de entrenamiento. Esto significa que, para una entrada específica a la red, estas ecuaciones —especialmente la 10.12 y la 10.13— nos indican la contribución de los sesgos y pesos de cualquier capa a la función de pérdida **para ese insumo muestra** 🤯.
+
+    Para implementar Descenso por Gradiente, necesitamos acumular esos errores, los términos $\partial E / \partial \mathbf{W}$ y $\partial E / \partial \mathbf{b}$ sobre las muestras de entrenamiento.
+
+    Para esto usamos el valor promedio de los errores para actualizar los pesos y sesgos al final de cada época o, como la implementaremos, minibatch.
+
+    En general, sin embargo, para entrenar la red debemos realizar lo siguiente para cada muestra del minibatch:
+    - Propagación hacia adelante a través de la red para crear la salida. En el camino, necesitamos almacenar la entrada en cada capa, ya que la necesitamos para implementar la retropropagación (esto es, necesitamos $\boldsymbol{x}^{\top}$ de la ecuación 10.13)
+    - Calcule el valor de la derivada de la función de pérdida —que en nuestro caso es el error cuadrático medio— para utilizarlo como el primer término de error en la retropropagación.
+    - Recorra las capas de la red en orden inverso, calculando $\partial E / \partial \mathbf{W}$ y $\partial E / \partial \mathbf{b}$ para cada capa completamente conectada. Esos valores son acumulados para cada muestra en el minibatch $(\Delta W, \Delta b)$
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Una vez procesadas las muestras del minilote y acumulados los errores, llega el momento de implementar Descenso de Gradiente. Aquí es donde los pesos y sesgos de cada capa se actualizan mediante las reglas de actualización :
+
+    $$
+    \begin{aligned}
+    \boldsymbol{W} & \leftarrow \boldsymbol{W}-\eta\left(\frac{1}{m} \Delta \boldsymbol{W}\right) \\
+    \boldsymbol{b} & \leftarrow \boldsymbol{b}-\eta\left(\frac{1}{m} \Delta \boldsymbol{b}\right)
+    \end{aligned}
+    $$
+
+    con $\Delta \boldsymbol{W}$ y $\Delta \boldsymbol{b}$ siendo los errores acumulados a lo largo del minilote y $m$ siendo el tamaño del minilote.
+
+    La repetición de pasos de descenso de gradiente conduce a un conjunto final de pesos y sesgos: una red entrenada.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+ 
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+ 
     """)
     return
 
