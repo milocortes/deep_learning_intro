@@ -1,0 +1,8 @@
+gifs/*
+.ipynb_checkpoints/*
+rho_003/*
+rho_015/*
+steepest_2D/*
+steepest_newton_2D/*
+steepest_newton_2D_momentum/*
+steepest_newton_2D_momentum_adam/*
