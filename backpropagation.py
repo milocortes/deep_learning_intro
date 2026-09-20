@@ -500,7 +500,7 @@ def _():
         return net
 
 
-    return BuildDataset, Evaluate, GradientDescent, np
+    return BuildDataset, Evaluate, GradientDescent, np, sigmoid
 
 
 @app.cell(hide_code=True)
@@ -912,6 +912,195 @@ def _(mo):
 
     La repetición de pasos de descenso de gradiente conduce a un conjunto final de pesos y sesgos: una red entrenada.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Implementación en Python
+
+    La implementación es similar al toolkit de Keras. Queremos tener la capacidad de crear redes arbitrarias completamente conectadas, por lo que utilizaremos clases de Python para cada capa y almacenaremos la arquitectura como una lista de capas. Cada capa mantiene sus pesos y sesgos, además de la capacidad de realizar una propagación hacia adelante, una propagación hacia atrás y un paso de descenso de gradiente. Para simplificar, emplearemos funciones de activación sigmoide y la función de pérdida de error cuadrático.
+
+    Definiremos dos clases : `ActivationLayer` y `FullyConnectedLayer`. Adicionalemte, la clase `Network` contendrá las clases `ActivationLayer` y `FullyConnectedLayer` para mantenerlas juntas durante el entrenamiento.
+    """)
+    return
+
+
+@app.cell
+def _(np, sigmoid):
+    #  Activation function and derivative
+    def sigmoid_prime(x):
+        return sigmoid(x)*(1.0 - sigmoid(x))
+
+    #  Loss function and derivative
+    def mse(y_true, y_pred):
+        return (0.5*(y_true - y_pred)**2).mean()
+
+    def mse_prime(y_true, y_pred):
+        return y_pred - y_true
+
+
+    ################################################################
+    #  ActivationLayer
+    #
+    class ActivationLayer:
+        def forward(self, input_data):
+            self.input = input_data
+            return sigmoid(input_data)
+
+        def backward(self, output_error):
+            return sigmoid_prime(self.input) * output_error
+
+        def step(self, eta):
+            return
+
+
+    ################################################################
+    #  FullyConnectedLayer
+    #
+    class FullyConnectedLayer:
+        def __init__(self, input_size, output_size):
+            #  for accumulating error over a minibatch
+            self.delta_w = np.zeros((input_size, output_size))
+            self.delta_b = np.zeros((1,output_size))
+            self.passes = 0
+
+            #  initialize the weights and biases w/small random values
+            self.weights = np.random.rand(input_size, output_size) - 0.5
+            self.bias = np.random.rand(1, output_size) - 0.5
+
+        def forward(self, input_data):
+            self.input = input_data
+            return np.dot(self.input, self.weights) + self.bias
+
+        def backward(self, output_error):
+            input_error = np.dot(output_error, self.weights.T)
+            weights_error = np.dot(self.input.T, output_error)
+
+            #  accumulate the error over the minibatch
+            self.delta_w += weights_error
+            self.delta_b += output_error
+            self.passes += 1
+            return input_error
+
+        def step(self, eta):
+            #  update the weights and biases by the mean error
+            #  over the minibatch
+            self.weights -= eta * self.delta_w / self.passes
+            self.bias -= eta * self.delta_b / self.passes
+
+            #  reset for the next minibatch
+            self.delta_w = np.zeros(self.weights.shape)
+            self.delta_b = np.zeros(self.bias.shape)
+            self.passes = 0
+
+
+    ################################################################
+    #  Network
+    #
+    class Network:
+        def __init__(self, verbose=True):
+            self.verbose = verbose
+            self.layers = []
+
+        def add(self, layer):
+            self.layers.append(layer)
+
+        def predict(self, input_data):
+            result = []
+            for i in range(input_data.shape[0]):
+                output = input_data[i]
+                for layer in self.layers:
+                    output = layer.forward(output)
+                result.append(output)
+            return result
+
+        def fit(self, x_train, y_train, minibatches, learning_rate, batch_size=64):
+            for i in range(minibatches):
+                err = 0
+
+                # select a random minibatch
+                idx = np.argsort(np.random.random(x_train.shape[0]))[:batch_size]
+                x_batch = x_train[idx]
+                y_batch = y_train[idx]
+
+                for j in range(batch_size):
+                    # forward propagation
+                    output = x_batch[j]
+                    for layer in self.layers:
+                        output = layer.forward(output)
+
+                    # accumulate loss
+                    err += mse(y_batch[j], output)
+
+                    # backward propagation
+                    error = mse_prime(y_batch[j], output)
+                    for layer in reversed(self.layers):
+                        error = layer.backward(error)
+
+                #  update weights and biases
+                for layer in self.layers:
+                    layer.step(learning_rate)
+
+                # report mean loss over minibatch
+                if (self.verbose) and ((i%10) == 0):
+                    err /= batch_size
+                    print('minibatch %5d/%d   error=%0.9f' % (i, minibatches, err))
+
+
+    return ActivationLayer, FullyConnectedLayer, Network
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Construcción de clasificador para MNIST
+
+    Entrenaremos una Red Completamentamente Conectada para construir un clasificador para el conjunto de datos MNIST. El conjunto de datos MNIST original consta de imágenes en escala de grises de 28×28 píxeles que representan dígitos escritos a mano sobre fondos negros. Es una herramienta fundamental para la comunidad de aprendizaje automático. Redimensionaremos las imágenes a 14×14 píxeles antes de convertirlas en vectores de 196 elementos (= 14 × 14).
+
+    El conjunto de datos incluye 60.000 imágenes de entrenamiento y 10.000 imágenes de prueba. Los vectores se almacenan en arreglos de NumPy.
+    """)
+    return
+
+
+@app.cell
+def _(ActivationLayer, FullyConnectedLayer, Network, np):
+    #  Load, reshape, and scale the data
+    x_train = np.load("dataset/mnist/train_images_small.npy")
+    x_test  = np.load("dataset/mnist/test_images_small.npy")
+    y_train = np.load("dataset/mnist/train_labels_vector.npy")
+    y_test  = np.load("dataset/mnist/test_labels.npy")
+
+    x_train = x_train.reshape(x_train.shape[0], 1, 14*14)
+    x_train /= 255
+    x_test = x_test.reshape(x_test.shape[0], 1, 14*14)
+    x_test /= 255
+
+    #  Build the network using sigmoid activations
+    net_fc = Network()
+    net_fc.add(FullyConnectedLayer(14*14, 100))
+    net_fc.add(ActivationLayer())
+    net_fc.add(FullyConnectedLayer(100, 50))
+    net_fc.add(ActivationLayer())
+    net_fc.add(FullyConnectedLayer(50, 10))
+    net_fc.add(ActivationLayer())
+
+    #  Loss and train
+    net_fc.fit(x_train, y_train, minibatches=40000, learning_rate=1.0)
+
+    #  Build the confusion matrix using the test set predictions
+    out = net_fc.predict(x_test)
+    cm = np.zeros((10,10), dtype="uint32")
+    for i in range(len(y_test)):
+        cm[y_test[i],np.argmax(out[i])] += 1
+
+    #  Show the results
+    print()
+    print(np.array2string(cm))
+    print()
+    print("accuracy = %0.7f" % (np.diag(cm).sum() / cm.sum(),))
+    print()
     return
 
 

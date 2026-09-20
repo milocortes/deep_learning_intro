@@ -8,8 +8,9 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
     import numpy as np
+    import matplotlib.pyplot as plt
 
-    return mo, np
+    return mo, np, plt
 
 
 @app.cell(hide_code=True)
@@ -57,9 +58,19 @@ def _(mo):
     mo.md(r"""
     Generalmente el modelo de machine learning puede ser escrito como :
 
-    donde son los insumos del modelo, son las salidas, también conocidas como *targets*,  y $\theta$ son los parámetros que se deben optimizar. La función objetivo, que llamamos *función de pérdida* (*loss function*), $L$, por lo general incluye varios términos que combinan diversos objetivos contrapuestos.
+    \begin{equation}
+    \mathbf{y}=\mathbf{f}_{\boldsymbol{\theta}}(\mathbf{x}),
+    \end{equation}
 
-    Para un modelo de regresión, el término de pérdida principal es el Error Cuadrático Médio (MSE) del ajuste del modelo a los datos. Este término de error es sumado sobre los $N$ datos.
+    donde son $\mathbf{x}$ los insumos del modelo, $\mathbf{y}$ son las salidas, también conocidas como *targets*,  y $\boldsymbol{\theta}$ son los parámetros que se deben optimizar. La función objetivo, que llamamos *función de pérdida* (*loss function*), $L$, por lo general incluye varios términos que combinan diversos objetivos contrapuestos.
+
+    Para un modelo de regresión, el término de pérdida principal es el Error Cuadrático Médio (MSE) del ajuste del modelo a los datos.
+
+    \begin{equation}
+    L=\sum_{j=1}^N\left\|\mathbf{y}_j-\mathbf{f}_{\boldsymbol{\theta}}\left(\mathbf{x}_j\right)\right\|^2 .
+    \end{equation}
+
+    Este término de error es sumado sobre los $N$ datos $\left\{\mathbf{x}_j, \mathbf{y}_j\right\}_{j=1}^N$..
     """)
     return
 
@@ -71,9 +82,13 @@ def _(mo):
 
     La regresión por minimos cuadrados es uno de los conceptos fundacionales de matemáticas aplicadas y estadística, con aplicaciones al análisis de datos, problemas inversos, teoría de control y machine learning.
 
-    El problema de regresión lineal por mínimos cuadrados involucra resolver para los parámetros desconocidos $x$ de un modelo que es escrito como un sistema lineal de ecuaciones:
+    El problema de regresión lineal por mínimos cuadrados involucra resolver para los parámetros desconocidos $\mathbf{x}$ de un modelo que es escrito como un sistema lineal de ecuaciones:
 
-    Para una matriz invertible $A$ esto equivale a un problema de inversión de matrices, pero cuando $A$ no es cuadrada, este requiere una solución vía optimización para encontrar el *mejor* ajuste.
+    \begin{equation}
+    \mathbf{A x}=\mathbf{b} .
+    \end{equation}
+
+    Para una matriz invertible $\mathbf{A}$ esto equivale a un problema de inversión de matrices, pero cuando $\mathbf{A}$ no es cuadrada, este requiere una solución vía optimización para encontrar el *mejor* ajuste.
     """)
     return
 
@@ -81,13 +96,17 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Dado un conjunto de datos de las variables predictoras y sus resultados asociados, ordenados como filas de una matriz $A \in R$ y un vector $b \in R$, respectivamente, la regresión busca encontrar la relación entre las columnas de $A$ que es más consistente con resultados asociados en $b$.
+    Dado un conjunto de datos de las variables predictoras y sus resultados asociados, ordenados como filas de una matriz $\mathbf{A} \in \mathbb{R}^{m \times n}$ y un vector $\mathbf{b} \in \mathbb{R}^m$, respectivamente, la regresión busca encontrar la relación entre las columnas de $\mathbf{A}$ que es más consistente con resultados asociados en $\mathbf{b}$.
 
     Esta relación es cuantificada por el sistema linear de ecuaciones :
 
-    que indica que el vector b puede ser aproximado como una combinación lineal de las columnas de A. Esta combinación lineal está dada por el vector, que está por determinarse.
+    \begin{equation}
+    \mathbf{A x} \approx \mathbf{b},
+    \end{equation}
 
-    El vector de salida $b$ está frecuentemente contaminado con ruido de medición, el cual tipicamente es modelado como la suma de un vector $\epsilon$ de ruido blanco gausiano independiente e identicamente distribuido $b = b + \epsilon$
+    que indica que el vector $\mathbf{b}$ puede ser aproximado como una combinación lineal de las columnas de $\mathbf{A}$. Esta combinación lineal está dada por el vector, que está por determinarse.
+
+    El vector de salida $\mathbf{b}$ está frecuentemente contaminado con ruido de medición, el cual tipicamente es modelado como la suma de un vector $\boldsymbol{\epsilon}$ de ruido blanco gausiano independiente e identicamente distribuido $\mathbf{b}=\mathbf{b}_{\text {true }}+\boldsymbol{\epsilon}$
     """)
     return
 
@@ -97,10 +116,25 @@ def _(mo):
     mo.md(r"""
     Es posible resolver el problema lineal de mínimos cuadrados en (2) analiticamente al calcular el gradiente de la función objetivo e igualarlo a cero. Podemos expandir la función objetivo como :
 
+    \begin{equation}
+    \begin{aligned}
+    \|\mathbf{A x}-\mathbf{b}\|_2^2 & =(\mathbf{A x}-\mathbf{b})^T(\mathbf{A x}-\mathbf{b}) \\
+    & =\left(\mathbf{x}^T \mathbf{A}^T-\mathbf{b}^T\right)(\mathbf{A x}-\mathbf{b}) \\
+    & =\mathbf{x}^T \mathbf{A}^T \mathbf{A} \mathbf{x}-\mathbf{x}^T \mathbf{A}^T \mathbf{b}-\mathbf{b}^T \mathbf{A} \mathbf{x}+\mathbf{b}^T \mathbf{b} .
+    \end{aligned}
+    \end{equation}
 
     Calcular el gradiente e igualarlo a cero produce:
 
-    La matriz es conocida como la pseudo-inversa de Moore-Penrose, y esta está definida incluso para matrices no cuadradas. Sin embargo, esto es sólo válido cuando es invertible. La matriz es invertible cuando tiene $n$ columnas linealmente independientes y $m \geq n$.
+    \begin{equation}
+    \begin{aligned}
+    \nabla\|\mathbf{A x}-\mathbf{b}\|_2^2 & =2 \mathbf{A}^T \mathbf{A} \mathbf{x}-\mathbf{A}^T \mathbf{b}-\mathbf{A}^T \mathbf{b}=0 \\
+    & \Longrightarrow \mathbf{A}^T \mathbf{A} \mathbf{x}=\mathbf{A}^T \mathbf{b} \\
+    & \Longrightarrow \mathbf{x}=\left(\mathbf{A}^T \mathbf{A}\right)^{-1} \mathbf{A}^T \mathbf{b} .
+    \end{aligned}
+    \end{equation}
+
+    La matriz $\mathbf{A}^{\dagger}=\left(\mathbf{A}^T \mathbf{A}\right)^{-1} \mathbf{A}^T$ es conocida como la pseudo-inversa de Moore-Penrose, y esta está definida incluso para matrices no cuadradas $\mathbf{A}$. Sin embargo, esto es sólo válido cuando $\left(\mathbf{A}^T \mathbf{A}\right)$ es invertible. La matriz $\mathbf{A}^T \mathbf{A}$ es invertible cuando $\mathbf{A}$ tiene $n$ columnas linealmente independientes y $m \geq n$.
     """)
     return
 
@@ -118,9 +152,13 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    SGD tiene más sentido en el contexto de machine learning, donde estamos optimizando los parámetros $\theta$ de una función, tal como en un problema de regresión o una red neuronal, para ajustarse mejor a los datos observados.
+    SGD tiene más sentido en el contexto de machine learning, donde estamos optimizando los parámetros $\boldsymbol{\theta}$ de una función $\mathrm{f}_\theta(\mathrm{x})$, tal como en un problema de regresión o una red neuronal, para ajustarse mejor a los datos observados.
 
-    Dados pares de datos de entrada y salida, buscamos encontrar los parámetros $\theta$ de manera que mejor aproxime promediado sobre los datos.
+    Dados pares de datos de entrada y salida $\left\{\mathbf{x}_j, \mathbf{y}_j\right\}_{j=1}^N$, buscamos encontrar los parámetros $\boldsymbol{\theta}$ de manera que $\mathbf{f}_{\boldsymbol{\theta}}\left(\mathbf{x}_j\right)$ mejor aproxime $\mathbf{y}_j$ promediado sobre los datos.
+
+    \begin{equation}
+    \min _{\boldsymbol{\theta}} \sum_{j=1}^N\left\|\mathbf{f}_{\boldsymbol{\theta}}\left(\mathbf{x}_j\right)-\mathbf{y}_j\right\|^2
+    \end{equation}
     """)
     return
 
@@ -128,7 +166,12 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    En machine learning se denomina al objetivo una *función de pérdida* la cual minimizamos sobre $\theta$. Es posible calcular el gradiente de la función de pérdida con respecto a $\theta$.
+    En machine learning se denomina al objetivo una *función de pérdida* $L(\mathbf{x}, \mathbf{y} ; \boldsymbol{\theta})=\left\|\mathbf{f}_{\boldsymbol{\theta}}(\mathbf{x})-\mathbf{y}\right\|^2$ la cual minimizamos sobre $\theta$. Es posible calcular el gradiente de la función de pérdida con respecto a $\boldsymbol{\theta}$. Es posible calcular el gradiente de la función de pérdida con respecto a $\boldsymbol{\theta}$:
+
+    \begin{equation}
+    \nabla L=2 \nabla \mathbf{f}_{\boldsymbol{\theta}}^T \cdot\left(\mathbf{f}_{\boldsymbol{\theta}}(\mathbf{x})-\mathbf{y}\right)
+    \end{equation}
+
 
     NOTA: el gradiente de puede ser calculado analiticamente o aproximado usando el algoritmo de backpropagation si se trata de una red neuronal. Backpropagation es esencialmente la regla de la cadena aplicada a capas de una red neuronal usando diferenciación automática. Diferenciación automática y backpropagation son la columna vertebral del entrenamiento de machine learning.
     """)
@@ -147,7 +190,11 @@ def _(mo):
 
     La regla de actualización del algoritmo puede ser escrita como :
 
-    En principio, nada parece que haya cambiado del algoritmo de descenso de gradiente. Toda la aleatoriedad está escondida dentro del gradiente. Esta es una característica, no un bug, y significa que podemos extender de forma sencilla SGD con otras reglas de actualización basadas en gradientes.
+    \begin{equation}
+    \boldsymbol{\theta}_{k+1}=\boldsymbol{\theta}_k-\gamma \nabla_{\boldsymbol{\theta}} L
+    \end{equation}
+
+    En principio, nada parece que haya cambiado del algoritmo de descenso de gradiente. Toda la aleatoriedad está escondida dentro del gradiente $\nabla_{\boldsymbol{\theta}} L$. Esta es una característica, no un bug, y significa que podemos extender de forma sencilla SGD con otras reglas de actualización basadas en gradientes.
     """)
     return
 
@@ -159,7 +206,7 @@ def _(mo):
 
     Estamos listos para probar el SGD para resolver un problema de regresión lineal simple.
 
-    Primero, generamos datos a partir de un modelo lineal con dos estados dimensionales de x y agregamos una cantidad relativamente grande de ruido.
+    Primero, generamos datos a partir de un modelo lineal con dos estados dimensionales de $\boldsymbol{x}$ y agregamos una cantidad relativamente grande de ruido.
     """)
     return
 
@@ -192,7 +239,7 @@ def _(np):
         # x: shape (2,)
         # b: scalar
         return A.dot(x) + b # shape (batch_size,)
-    
+
     def mean_squared_error(y_true, y_pred):
         return np.mean((y_true - y_pred)**2)
 
@@ -202,7 +249,31 @@ def _(np):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Definimos la función que calcula el gradiente aproximado sobre un lote de datos
+    Definimos la función que calcula el gradiente aproximado sobre un lote de datos.
+
+    El gradiente para los pesos $\mathbf{x}$ es igual a :
+
+    \begin{equation}
+    \dfrac{2}{m} \mathbf{A}^T(\mathbf{y}-\boldsymbol{A} \mathbf{x} - b)
+    \end{equation}
+
+    y para el intercepto $b$:
+
+    \begin{equation}
+    \dfrac{2}{m} \mathbf{1}^T (\mathbf{y}-\boldsymbol{A} \mathbf{x} - b)
+    \end{equation}
+
+    donde $\mathbf{1}$ es el vector de unos :
+
+    \begin{equation}
+    \mathbf{1}=\left[\begin{array}{l}
+    1 \\
+    1 \\
+    1
+    \end{array}\right]
+    \end{equation}
+
+    y $m$ es el tamaño de batch.
     """)
     return
 
@@ -248,7 +319,14 @@ def _(batch_gradients, mean_squared_error, np, predict):
             y_pred = predict(A, x, b)
             mse = mean_squared_error(y, y_pred)
             mse_history.append(mse)
-        return x, b, mse_history
+
+        results = {
+            "x" : x, 
+            "b" : b, 
+            "mse_history" : mse_history
+        }
+
+        return results
 
     return (full_batch_gd,)
 
@@ -261,7 +339,7 @@ def _(batch_gradients, mean_squared_error, np, predict):
         b = 0.0
         N = A.shape[0]
         mse_history = []
-    
+
         for epoch in range(n_epochs):
             indices = np.random.permutation(N) # Shuffle data
             for start in range(0, N, batch_size):
@@ -276,7 +354,14 @@ def _(batch_gradients, mean_squared_error, np, predict):
             y_pred = predict(A, x, b)
             mse = mean_squared_error(y, y_pred)
             mse_history.append(mse)
-        return x, b, mse_history
+
+        results = {
+            "x" : x, 
+            "b" : b, 
+            "mse_history" : mse_history
+        }
+
+        return results
 
     return (mini_batch_sgd,)
 
@@ -289,7 +374,7 @@ def _(batch_gradients, mean_squared_error, np, predict):
         b = 0.0
         N = A.shape[0]
         mse_history = []
-    
+
         for epoch in range(n_epochs):
             indices = np.random.permutation(N)
             for i in indices:
@@ -303,7 +388,13 @@ def _(batch_gradients, mean_squared_error, np, predict):
             mse = mean_squared_error(y, y_pred)
             mse_history.append(mse)
 
-        return x, b, mse_history
+        results = {
+            "x" : x, 
+            "b" : b, 
+            "mse_history" : mse_history
+        }
+
+        return results
 
     return (sgd_batch1,)
 
@@ -314,25 +405,62 @@ def _(mo):
     Históricamente SGD "verdadero" solía usar un tamaño de batch de 1, aunque ahora en la práctica casi siempre se usa mini-batch. Para SGD con tamaño de batch de 1, se reduce la tasa de aprendizaje para disminuir la sensibilidad al ruido en los datos y el riesgo de divergencia.
 
     SGD y descenso por gradiente son los extremos de SGD por mini-batch.
+
+    Ejecutemos los métodos:
     """)
     return
 
 
 @app.cell
-def _(A, full_batch_gd, y):
-    full_batch_gd(A, y, gamma=0.01, n_epochs=50)
+def _(A, full_batch_gd, mini_batch_sgd, sgd_batch1, y):
+    # Guardemos los resultados de los métodos en un diccionario
+    n_epochs = 50
+    resultados_metodos = {
+        "GD (full-batch)" : full_batch_gd(A, y, gamma=0.01, n_epochs=n_epochs), 
+        "Mini-Batch GD" : mini_batch_sgd(A, y, batch_size=50, gamma=0.01, n_epochs=n_epochs), 
+        "SGD (batch = 1)" : sgd_batch1(A, y, gamma=0.001, n_epochs=n_epochs)
+    } 
+    return n_epochs, resultados_metodos
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Comparemos los resultados de los tres métodos. Mini-batch y SGD (batch = 1) convergen en muchos menos épocas que el descenso de gradiente con batch completo.
+
+    Sin embargo, una época denota una única pasada por todos los datos, de manera que una época con tamaño de batch igual a 1 involucra $n = 2000$ pasos individuales, cada uno utilizando un único punto de datos.
+    """)
     return
 
 
 @app.cell
-def _(A, mini_batch_sgd, y):
-    mini_batch_sgd(A, y, batch_size=50, gamma=0.01, n_epochs=50)
+def _(n_epochs, plt, resultados_metodos):
+    ## Graficamos los resultados
+    fig, ax = plt.subplots()
+
+    for metodo, resultados in resultados_metodos.items():
+        ax.semilogy(
+            range(n_epochs), 
+            resultados["mse_history"], 
+            label = metodo, 
+            marker='o', 
+            linestyle='dotted'
+        )
+    ax.grid()
+    ax.grid(which="minor", color="0.9")
+    ax.legend()
+    plt.ylabel("MSE (log scale)")
+    plt.show()
     return
 
 
 @app.cell
-def _(A, sgd_batch1, y):
-    sgd_batch1(A, y, gamma=0.001, n_epochs=50)
+def _():
+    return
+
+
+@app.cell
+def _():
     return
 
 
