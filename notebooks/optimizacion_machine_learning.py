@@ -477,8 +477,129 @@ def _(A, y):
     results = model.fit()
 
     print(results.summary())
-
     return X, sm
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Regresión Logística
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Componentes de un clasificador probabilístico de Aprendizaje de Máquina
+    La regresión logística es un clasificador probabilístico que hace uso de aprendizaje de máquina supervisado. Un sistema de aprendizaje de máquina que resuelve un problema de clasificación tiene cuatro componentes:
+
+    - Una **representación de carácterísticas** de los inputs. Para cada observación de entrada $x^{(i)}$, se representará como un vector de carácterísticas $[x_1, x_2, \dots, x_n]$.
+    -  Una función de clasificación que calcula $\hat{y}$, la clase estimada, via $p(y|x)$. Usaremos la función **sigmoide** para este fin.
+    -  Una función objetivo para el aprendizaje, la cual es una medida de desempeño del modelo la cual minimiza el error para los datos de entrenamiento.
+    -  Un algoritmo para optimizar la función objetivo. Usaremos SGD para este fin.
+
+    Una regresión logística involucra dos etapas :
+    - **Training** : Entrenar el sistema (específicamente los pesos $w$ y sesgo $b$) mediante el algoritmo de descenso de gradiente estocástico y la función de pérdida de *entropía cruzada* (*cross-entropy*).
+    - **Test** : Dada una muestra de prueba $x$ calculamos $p(y|x)$ para calcular la probabilidad más alta para las etiquetas $y = 1$ o $y=0$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Clasificación : la función sigmoide
+
+    El objetivo de una regresión logística binaria es entrenar un clasificador que pueda generar decisiones binarias acerca de la clase o etiqueta de una nueva observación de entrada.
+
+    Consideremos una observación $x$ que representamos como un vector de carácterísticas $[x_1, x_2, \dots, x_n]$. La salida del clasificador $y$ puede ser 1 o 0. Queremos saber la probabilidad $P(y=1|x)$ que la observación sea miembra de la clase 1.
+
+    La regresión logística resuelve esta tarea al aprender, a partir de los datos de entrenamiento, un vector de **pesos** y un **término de sesgo**. Los pesos $w_i$ nos dicen cuán importante es la característica en la decisión de clasificación. Los peros pueden ser positivo (proporcionando evidencia de que el caso que se está clasificando pertenece a la clase positiva) o negativos (proporcionando evidencia de que el caso que se está clasificando pertenece a la clase negativa).
+
+    Para hacer decisiones sobre caso (porterior a que hemos aprendido los pesos en el entrenamiento) el clasificador multiplica cada característica $x_i$ por su peso $w_i$ (resumiendo así las características ponderadas) y agrega el término de sesgo $b$. El resultado es un valor numérico $z$ que expresa la suma ponderada de la evidencia para la clase.
+
+    Representaremos esta suma como un **producto punto**.
+
+    La ecuación anterior no forza a $z$ a ser una probabilidad, esto es, su rango no se encuentra entre 0 y 1.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Para construir la probabilidad, pasaremos $z$ a la función **sigmoide** $\sigma (z)$. La función sigmoide (llamada así porque su forma es parecida a la letra $s$) es también llamada **función logística**. La función tiene la siguiente forma :
+
+    La función sigmoide tiene varias ventajas como :
+    - Toma valores reales y los mapea en un rango de $[0,1]$.
+    - Dado que es casi lineal cerca de 0 pero se aplana hacia los extremos, tiende a comprimir los valores atípicos hacia 0 o 1.
+    - Es diferenciable, lo cual será útil para el aprendizaje.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Si aplicamos la sigmoide a la suma ponderada de características, obtenemos un número entre 0 y 1. Para que sea una probabilidad, solo necesitamos asegurarnos de que los dos caso, $p(y=1)$ y $p(y=0)$, sumen 1.
+
+    Ahora disponemos de un modelo que, dada una instancia x, calcula la probabilidad. Cómo tomamos una decisión? para instancia de prueba $x$, decimos **sí** si la probabilidad $P(y = 1 | x)$ es mayor que 0.5, y **no** en el caso contrario. Llamamos 0.5 la **frontera de decisión**.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Aprendizaje
+
+    Cómo son aprendidos los parámetros, $w$ y $b$, del modelo? La regresión logística es un caso de clasificación supervisada en el que conocemos la etiqueta correcta $y$ (0 o 1) para cada observación $x$. Lo que el modelo produce es $\hat{y}$, la estimación del sistema del valor real de $y$. Queremos aprender los parámetros  que hacen que $\hat{y}$ para cada observación de entrenamiento sea lo más cercana posible al valor verdadero de $y$.
+
+    Para esto requerimos dos componentes. El primero es una métrica que cuantifique cuán cercana es la etiqueta estimada por el sistema ($\hat{y}$) de su etiqueta verdadera $y$. Está distancia es cuantificada por la **función de pérdida**. Usaremos la **función de pérdida entropía cruzada** para este objetivo. El segundo componente es el algoritmo de optimización el cual se utiliza como mecanismo iterativo de actualización de los pesos y sesgo para minimizar la función de pérdida. Usaremos SGD para esta tarea.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Función de pérdida entropía cruzada
+
+    Necesitamos una función de pérdida que exprese, para una observación x, qué tan cerca está la salida del clasificador ($\hat{y} = \sigma (w \cdot x + b)$) de su valor real ($y$ que toma valor 1 o 0). Llamemos a esta función:
+
+    Esto se realiza mediante una función de pérdida que favorece una mayor probabilidad para las etiquetas de clase correctas de los ejemplos de entrenamiento. Esta función se obtiene mediente una **estimación por máxima verosimilitud condicional** : escogemos los parámetros $w$ y $b$ que **maximizan la log probabilidad de las etiquetas verdaderas $y$ en el conjunto de entrenamiento** dadas las observaciones $x$. La función de pérdida resultante es el *negativo del logaritmo de la función de verosimilitud*, la cuál se denomina **entropía cruzada**.
+
+    Derivemos esta función de pérdida para una sola observación $x$. Nuesto objetivo es aprender los pesos que maximizan la probabilidad de la etiqueta correcta $p(y|x)$. Dado que existen sólo dos salidas discretas (1 o 0), esta se modela como una distribución Bernoulli, y podemos expresar la probabilidad $p(y|x)$ que nuestro clasificador produce para una observación como
+
+    Ahora tomemos logaritmos en ambos lados de la expresión.
+
+    Esta última expresión describe la log verosimilitud que debemos maximizar. Para convertirla en una función de pérdida (que necesitamos minimizar), simplemente invertiremos el signo. El resultado es la pérdida de entropía cruzada $L_{CE}$
+
+
+    Finalmente, podemos introducir la definición de $\hat{y} = \sigma (w \cdot x + b)$
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Gradiente de la entropía cruzada
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    /// details | Derivación del Gradiente
+        type: info
+
+    Some additional content.
+    ///
+    """)
+    return
 
 
 @app.cell
@@ -491,8 +612,8 @@ def _(np):
 
     def loss_cross_entropy(y_true, y_pred):
         # Evitar log(0) con un pequeño épsilon numérico
-        #eps = 1e-7
-        #y_pred = np.clip(y_pred, eps, 1.0 - eps)
+        eps = 1e-7
+        y_pred = np.clip(y_pred, eps, 1.0 - eps)
         return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
 
 
@@ -510,7 +631,7 @@ def _(np, predict_log):
         grad_w = (2.0 / batch_size) * X_batch.T * residuals
         grad_b = (2.0 / batch_size) * np.sum(residuals)
         return grad_w, grad_b
-    
+
 
 
     return
@@ -527,17 +648,17 @@ def _(X, loss_cross_entropy, np, predict_log, sm):
     gamma = 0.00999
 
     mse_history = []
-    for epoch in range(400_000):
+    for epoch in range(500_000):
         y_pred = predict_log(X_log, w, b)
         residuals = (y_pred - y_log)
-    
+
         w -= gamma * (2.0 / batch_size) * X_log.T.dot(residuals)
         b -= gamma * (2.0 / batch_size) * np.sum(residuals)
 
         y_pred = predict_log(X_log, w, b)
         mse = loss_cross_entropy(y_log, y_pred)
         mse_history.append(mse)
-    return mse_history, w
+    return b, mse_history, w
 
 
 @app.cell
@@ -547,8 +668,9 @@ def _(mse_history):
 
 
 @app.cell
-def _(w):
-    w
+def _(b, w):
+    w, b
+
     return
 
 
