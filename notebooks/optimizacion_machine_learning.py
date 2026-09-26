@@ -308,7 +308,7 @@ def _(mo):
 def _(batch_gradients, mean_squared_error, np, predict):
     # Descenso por gradiente estándar
     def full_batch_gd(A, y, gamma=0.01, n_epochs=50):
-        x = np.zeros(2) # unknown parameter vector
+        x = np.zeros(A.shape[1]) # unknown parameter vector
         b = 0.0
         mse_history = []
         for epoch in range(n_epochs):
@@ -335,7 +335,7 @@ def _(batch_gradients, mean_squared_error, np, predict):
 def _(batch_gradients, mean_squared_error, np, predict):
     # SGD con mini-batch (SGD con un tamaño de batch pequeño, n = 50)
     def mini_batch_sgd(A, y, batch_size=50, gamma=0.01, n_epochs=50):
-        x = np.zeros(2)
+        x = np.zeros(A.shape[1])
         b = 0.0
         N = A.shape[0]
         mse_history = []
@@ -370,7 +370,7 @@ def _(batch_gradients, mean_squared_error, np, predict):
 def _(batch_gradients, mean_squared_error, np, predict):
     # SGD con tamaño de batch igual a 1
     def sgd_batch1(A, y, gamma=0.001, n_epochs=50):
-        x = np.zeros(2)
+        x = np.zeros(A.shape[1])
         b = 0.0
         N = A.shape[0]
         mse_history = []
@@ -451,6 +451,114 @@ def _(n_epochs, plt, resultados_metodos):
     ax.legend()
     plt.ylabel("MSE (log scale)")
     plt.show()
+    return
+
+
+@app.cell
+def _(resultados_metodos):
+    resultados_metodos
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Verificación de Resultados con [`statsmodels`](https://www.statsmodels.org/stable/index.html)
+    """)
+    return
+
+
+@app.cell
+def _(A, y):
+    import statsmodels.api as sm
+
+    X = sm.add_constant(A)
+    model = sm.OLS(y, X)
+    results = model.fit()
+
+    print(results.summary())
+
+    return X, sm
+
+
+@app.cell
+def _(np):
+    def sigmoid(X):
+        return 1.0 / (1.0 + np.exp(-X))
+
+    def predict_log(X, w, b):
+        return sigmoid(X.dot(w) + b)
+
+    def loss_cross_entropy(y_true, y_pred):
+        # Evitar log(0) con un pequeño épsilon numérico
+        #eps = 1e-7
+        #y_pred = np.clip(y_pred, eps, 1.0 - eps)
+        return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+
+
+    return loss_cross_entropy, predict_log
+
+
+@app.cell
+def _(np, predict_log):
+    def batch_gradients_log(X_batch, y_batch, w, b):
+        # X_batch, w, b: same shape
+        # y_batch: shape (batch_size,)
+        batch_size = X_batch.shape[0]
+        y_pred = predict_log(X_batch, w, b)
+        residuals = (y_pred - y_batch)
+        grad_w = (2.0 / batch_size) * X_batch.T * residuals
+        grad_b = (2.0 / batch_size) * np.sum(residuals)
+        return grad_w, grad_b
+    
+
+
+    return
+
+
+@app.cell
+def _(X, loss_cross_entropy, np, predict_log, sm):
+    X_log = sm.datasets.spector.load_pandas().exog.to_numpy()
+    y_log = sm.datasets.spector.load_pandas().endog.to_numpy()
+    batch_size = X_log.shape[0]
+
+    w = np.zeros(X.shape[1]) # unknown parameter vector
+    b = 0.0
+    gamma = 0.00999
+
+    mse_history = []
+    for epoch in range(400_000):
+        y_pred = predict_log(X_log, w, b)
+        residuals = (y_pred - y_log)
+    
+        w -= gamma * (2.0 / batch_size) * X_log.T.dot(residuals)
+        b -= gamma * (2.0 / batch_size) * np.sum(residuals)
+
+        y_pred = predict_log(X_log, w, b)
+        mse = loss_cross_entropy(y_log, y_pred)
+        mse_history.append(mse)
+    return mse_history, w
+
+
+@app.cell
+def _(mse_history):
+    mse_history[-10:]
+    return
+
+
+@app.cell
+def _(w):
+    w
+    return
+
+
+@app.cell
+def _(sm):
+    spector_data = sm.datasets.spector.load_pandas()
+    spector_data.exog = sm.add_constant(spector_data.exog)
+    logit_mod = sm.Logit(spector_data.endog, spector_data.exog)
+    logit_res = logit_mod.fit()
+    print(logit_res.summary())
     return
 
 
