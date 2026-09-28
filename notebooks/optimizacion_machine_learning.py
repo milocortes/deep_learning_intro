@@ -17,6 +17,8 @@ def _():
 def _(mo):
     mo.md(r"""
     # Optimización para Machine Learning
+
+    Tomado de [Optimization: A Bootcamp for Machine Learning, Inverse Problems, and Control](https://faculty.washington.edu/sbrunton/OptimizationBootcamp.pdf)
     """)
     return
 
@@ -504,6 +506,8 @@ def _(A, y):
 def _(mo):
     mo.md(r"""
     # Regresión Logística
+    Tomado de [Speech and Language Processing. Daniel Jurafsky & James H. Martin. Copyright ©2020. All
+    rights reserved. Draft of December 30, 2020. Capítulo 3](https://web.stanford.edu/~jurafsky/slp3/)
     """)
     return
 
