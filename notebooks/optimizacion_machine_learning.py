@@ -188,6 +188,14 @@ def _(mo):
 
     Por lo tanto, SGD introduce un nuevo hiperparámetro : el tamaño del batch.
 
+    El algoritmo de descenso del gradiente estocástico es nombrado *estocástico* dado que elige una **una sóla** muestra aleatoria a la vez, ajustando los pesos con el fin de mejorar el desempeño de **sola** esa muestra. Esto puede generar movimientos muy irregulares, por lo que es habitual calcular el gradiente sobre lotes (*batches*) de muestras de entrenamiento en lugar de sobre una sola muestra.
+
+    En el **entrenamiento por lote** (**batch training**) calculamos el gradiente sobre el conjunto de entrenamiento completo. Al observar tantas muestras, el entrenamiento por lotes ofrece una estimación muy buena de la dirección en la que deben moverse los pesos, pero con el costo de gastar tiempo de procesamiento para cada muestra única en el conjunto de entrenamiento para calcular la dirección de ajuste.
+
+    Una alternativa es el **entrenamiento por mini-lote** (**mini-batch training**) : entrenamos para un grupo de $m$ muestras (512 o 1024, por ejemplo) menor a la cantidad total de las muestras del conjunto de datos completo. Si $m$ es del tamaño del conjunto de datos completo, usamos el descenso de gradiente por **lote**; si $m=1$, usamos el algoritmo de descenso del gradiente estocástico.
+
+    El entrenamiento por mini-batch tiene la ventaja de ser computacionalmente eficiente. Los mini-batches pueden ser facilmente vectorizados, lo cual permite procesar todos los batches en paralelo para posteriormente acumular la pérdida, algo que no es posible con el entrenamiento por batch o por actualización individual.
+
     La regla de actualización del algoritmo puede ser escrita como :
 
     \begin{equation}
@@ -308,6 +316,7 @@ def _(mo):
 def _(batch_gradients, mean_squared_error, np, predict):
     # Descenso por gradiente estándar
     def full_batch_gd(A, y, gamma=0.01, n_epochs=50):
+        print("\nDescenso por gradiente estándar\n")
         x = np.zeros(A.shape[1]) # unknown parameter vector
         b = 0.0
         mse_history = []
@@ -319,6 +328,9 @@ def _(batch_gradients, mean_squared_error, np, predict):
             y_pred = predict(A, x, b)
             mse = mean_squared_error(y, y_pred)
             mse_history.append(mse)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Loss (MSE) = {mse:.4f}")
 
         results = {
             "x" : x, 
@@ -335,6 +347,7 @@ def _(batch_gradients, mean_squared_error, np, predict):
 def _(batch_gradients, mean_squared_error, np, predict):
     # SGD con mini-batch (SGD con un tamaño de batch pequeño, n = 50)
     def mini_batch_sgd(A, y, batch_size=50, gamma=0.01, n_epochs=50):
+        print("\nSGD con mini-batch (SGD con un tamaño de batch pequeño, n = 50)\n")
         x = np.zeros(A.shape[1])
         b = 0.0
         N = A.shape[0]
@@ -355,6 +368,9 @@ def _(batch_gradients, mean_squared_error, np, predict):
             mse = mean_squared_error(y, y_pred)
             mse_history.append(mse)
 
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Loss (MSE) = {mse:.4f}")
+
         results = {
             "x" : x, 
             "b" : b, 
@@ -367,9 +383,10 @@ def _(batch_gradients, mean_squared_error, np, predict):
 
 
 @app.cell
-def _(batch_gradients, mean_squared_error, np, predict):
+def sgd_batch1(batch_gradients, mean_squared_error, np, predict):
     # SGD con tamaño de batch igual a 1
     def sgd_batch1(A, y, gamma=0.001, n_epochs=50):
+        print("\nSGD con tamaño de batch igual a 1\n")
         x = np.zeros(A.shape[1])
         b = 0.0
         N = A.shape[0]
@@ -387,6 +404,9 @@ def _(batch_gradients, mean_squared_error, np, predict):
             y_pred = predict(A, x, b)
             mse = mean_squared_error(y, y_pred)
             mse_history.append(mse)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Loss (MSE) = {mse:.4f}")
 
         results = {
             "x" : x, 
@@ -477,7 +497,7 @@ def _(A, y):
     results = model.fit()
 
     print(results.summary())
-    return X, sm
+    return (sm,)
 
 
 @app.cell(hide_code=True)
@@ -519,7 +539,15 @@ def _(mo):
 
     Para hacer decisiones sobre caso (porterior a que hemos aprendido los pesos en el entrenamiento) el clasificador multiplica cada característica $x_i$ por su peso $w_i$ (resumiendo así las características ponderadas) y agrega el término de sesgo $b$. El resultado es un valor numérico $z$ que expresa la suma ponderada de la evidencia para la clase.
 
+    \begin{equation}
+    z=\left(\sum_{i=1}^n w_i x_i\right)+b
+    \end{equation}
+
     Representaremos esta suma como un **producto punto**.
+
+    \begin{equation}
+    z=w \cdot x+b
+    \end{equation}
 
     La ecuación anterior no forza a $z$ a ser una probabilidad, esto es, su rango no se encuentra entre 0 y 1.
     """)
@@ -530,6 +558,10 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     Para construir la probabilidad, pasaremos $z$ a la función **sigmoide** $\sigma (z)$. La función sigmoide (llamada así porque su forma es parecida a la letra $s$) es también llamada **función logística**. La función tiene la siguiente forma :
+
+    \begin{equation}
+    y=\sigma(z)=\frac{1}{1+e^{-z}}=\frac{1}{1+\exp (-z)}
+    \end{equation}
 
     La función sigmoide tiene varias ventajas como :
     - Toma valores reales y los mapea en un rango de $[0,1]$.
@@ -542,9 +574,31 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Si aplicamos la sigmoide a la suma ponderada de características, obtenemos un número entre 0 y 1. Para que sea una probabilidad, solo necesitamos asegurarnos de que los dos caso, $p(y=1)$ y $p(y=0)$, sumen 1.
+    Si aplicamos la sigmoide a la suma ponderada de características, obtenemos un número entre 0 y 1. Para que sea una probabilidad, solo necesitamos asegurarnos de que los dos caso, $p(y=1)$ y $p(y=0)$, sumen 1. Probaremos esto a continuación :
 
-    Ahora disponemos de un modelo que, dada una instancia x, calcula la probabilidad. Cómo tomamos una decisión? para instancia de prueba $x$, decimos **sí** si la probabilidad $P(y = 1 | x)$ es mayor que 0.5, y **no** en el caso contrario. Llamamos 0.5 la **frontera de decisión**.
+    \begin{equation}
+    \begin{aligned}
+    P(y=1) & =\sigma(w \cdot x+b) \\
+    & =\frac{1}{1+\exp (-(w \cdot x+b))} \\
+    P(y=0) & =1-\sigma(w \cdot x+b) \\
+    & =1-\frac{1}{1+\exp (-(w \cdot x+b))} \\
+    & =\frac{\exp (-(w \cdot x+b))}{1+\exp (-(w \cdot x+b))}
+    \end{aligned}
+    \end{equation}
+
+    La función sigmoide tiene la propiedad :
+
+    \begin{equation}
+    1-\sigma(x)=\sigma(-x)
+    \end{equation}
+
+    De manera que podemos expresar $P(y=0)$ como $\sigma(-(w \cdot x+b))$
+
+    Ahora disponemos de un modelo que, dada una instancia x, calcula la probabilidad. Cómo tomamos una decisión? para instancia de prueba $x$, decimos **sí** si la probabilidad $P(y = 1 | x)$ es mayor que 0.5, y **no** en el caso contrario. Llamamos 0.5 la **frontera de decisión** :
+
+    \begin{equation}
+    \hat{y}= \begin{cases}1 & \text { if } P(y=1 \mid x)>0.5 \\ 0 & \text { otherwise }\end{cases}
+    \end{equation}
     """)
     return
 
@@ -568,16 +622,49 @@ def _(mo):
 
     Necesitamos una función de pérdida que exprese, para una observación x, qué tan cerca está la salida del clasificador ($\hat{y} = \sigma (w \cdot x + b)$) de su valor real ($y$ que toma valor 1 o 0). Llamemos a esta función:
 
+    \begin{equation}
+    L(\hat{y}, y)=\text { How much } \hat{y} \text { differs from the true } y
+    \end{equation}
+
     Esto se realiza mediante una función de pérdida que favorece una mayor probabilidad para las etiquetas de clase correctas de los ejemplos de entrenamiento. Esta función se obtiene mediente una **estimación por máxima verosimilitud condicional** : escogemos los parámetros $w$ y $b$ que **maximizan la log probabilidad de las etiquetas verdaderas $y$ en el conjunto de entrenamiento** dadas las observaciones $x$. La función de pérdida resultante es el *negativo del logaritmo de la función de verosimilitud*, la cuál se denomina **entropía cruzada**.
 
     Derivemos esta función de pérdida para una sola observación $x$. Nuesto objetivo es aprender los pesos que maximizan la probabilidad de la etiqueta correcta $p(y|x)$. Dado que existen sólo dos salidas discretas (1 o 0), esta se modela como una distribución Bernoulli, y podemos expresar la probabilidad $p(y|x)$ que nuestro clasificador produce para una observación como
 
+    \begin{equation}
+    p(y \mid x)=\hat{y}^y(1-\hat{y})^{1-y}
+    \end{equation}
+
+    /// admonition | Nota
+
+    Sí $y=1$, la ecuación simplifica a $\hat{y}$; si $y=0$, la ecuación simplifica a $1-\hat{y}$
+    ///
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     Ahora tomemos logaritmos en ambos lados de la expresión.
+
+    \begin{equation}
+    \begin{aligned}
+    \log p(y \mid x) & =\log \left[\hat{y}^y(1-\hat{y})^{1-y}\right] \\
+    & =y \log \hat{y}+(1-y) \log (1-\hat{y})
+    \end{aligned}
+    \end{equation}
 
     Esta última expresión describe la log verosimilitud que debemos maximizar. Para convertirla en una función de pérdida (que necesitamos minimizar), simplemente invertiremos el signo. El resultado es la pérdida de entropía cruzada $L_{CE}$
 
+    \begin{equation}
+    L_{\mathrm{CE}}(\hat{y}, y)=-\log p(y \mid x)=-[y \log \hat{y}+(1-y) \log (1-\hat{y})]
+    \end{equation}
 
     Finalmente, podemos introducir la definición de $\hat{y} = \sigma (w \cdot x + b)$
+
+    \begin{equation}
+    L_{\mathrm{CE}}(\hat{y}, y)=-[y \log \sigma(w \cdot x+b)+(1-y) \log (1-\sigma(w \cdot x+b))]
+    \end{equation}
     """)
     return
 
@@ -586,6 +673,26 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     ## Gradiente de la entropía cruzada
+
+    Nuestro objetivo con el algoritmo de descenso del gradiente es encontrar los pesos óptimos que minimizan la función de pérdida que hemos definido para el modelo ($L_{CE}$). Nuestro objetivo es encontrar el conjunto de pesos que minimizan la función de pérdid,  promediada sobre todas las muestras de entrenamiento :
+
+    \begin{equation}
+    \hat{\theta}=\underset{\theta}{\operatorname{argmin}} \frac{1}{m} \sum_{i=1}^m L_{\mathrm{CE}}\left(f\left(x^{(i)} ; \theta\right), y^{(i)}\right)
+    \end{equation}
+
+    Con el objetivo de actualizar $\theta$, necesitamos una definición del gradiente $\nabla L(f(x ; \theta), y)$. El gradiente de la función de pérdida de la entropía cruzada para un peso $w_j$ es :
+
+    \begin{equation}
+    \frac{\partial L_{\mathrm{CE}}(\hat{y}, y)}{\partial w_j}=[\sigma(w \cdot x+b)-y] x_j
+    \end{equation}
+
+    Nota que la expresión del gradiente corresponde a un solo peso $w_j$ representa un valor muy intuitivo : la diferencia entre $y$ y nuestra estimación $\hat{y} = \sigma (w \cdot x +b)$ multiplicado por el el vector de características $x_j$.
+
+    El gradiente de la función de pérdida de la entropía cruzada para el sesgo b$ es :
+
+    \begin{equation}
+    \frac{\partial L_{\mathrm{CE}}(\hat{y}, y)}{\partial b}=[\sigma(w \cdot x+b)-y]
+    \end{equation}
     """)
     return
 
@@ -596,8 +703,183 @@ def _(mo):
     /// details | Derivación del Gradiente
         type: info
 
-    Some additional content.
+    Tengamos en cuenta tres elementos. El primero, la derivada de $\ln (x)$ :
+
+    \begin{equation}
+    \frac{d}{d x} \ln (x)=\frac{1}{x}
+    \end{equation}
+
+    Segundo, la derivada de la función sigmoide :
+
+    \begin{equation}
+    \frac{d \sigma(z)}{d z}=\sigma(z)(1-\sigma(z))
+    \end{equation}
+
+    Tercero, la **regla de la cadena**. Supongamos que estamos calculando la derivada de una composición de funciones $f(x) = u (v(x))$. La derivada de $f(x)$ es la derivada de $u(x)$ con respecto a $v(x)$ con respecto a $x$ :
+
+    \begin{equation}
+    \frac{d f}{d x}=\frac{d u}{d v} \cdot \frac{d v}{d x}
+    \end{equation}
+
+    Queremos calcular la derivada de la función de pérdida con respecto a un peso $w_j$ :
+
+    \begin{equation}
+    \begin{aligned}
+    \frac{\partial L_{\mathrm{CE}}}{\partial w_j} & =\frac{\partial}{\partial w_j}-[y \log \sigma(w \cdot x+b)+(1-y) \log (1-\sigma(w \cdot x+b))] \\
+    & =-\left[\frac{\partial}{\partial w_j} y \log \sigma(w \cdot x+b)+\frac{\partial}{\partial w_j}(1-y) \log [1-\sigma(w \cdot x+b)]\right]
+    \end{aligned}
+    \end{equation}
+
+    Posteriormente, usando la regla de la cadena, y basándonos en la derivada del logaritmo:
+
+    \begin{equation}
+    \frac{\partial L_{\mathrm{CE}}}{\partial w_j}=-\frac{y}{\sigma(w \cdot x+b)} \frac{\partial}{\partial w_j} \sigma(w \cdot x+b)-\frac{1-y}{1-\sigma(w \cdot x+b)} \frac{\partial}{\partial w_j} 1-\sigma(w \cdot x+b)
+    \end{equation}
+
+    Reordenando términos :
+
+    \begin{equation}
+    \frac{\partial L_{\mathrm{CE}}}{\partial w_j}=-\left[\frac{y}{\sigma(w \cdot x+b)}-\frac{1-y}{1-\sigma(w \cdot x+b)}\right] \frac{\partial}{\partial w_j} \sigma(w \cdot x+b)
+    \end{equation}
+
+    Sustituyendo la derivada de la sigmoide y aplicando la regla de la cadena una vez más, obtenemos:
+
+    \begin{equation}
+    \begin{aligned}
+    \frac{\partial L_{\mathrm{CE}}}{\partial w_j} & =-\left[\frac{y-\sigma(w \cdot x+b)}{\sigma(w \cdot x+b)[1-\sigma(w \cdot x+b)]}\right] \sigma(w \cdot x+b)[1-\sigma(w \cdot x+b)] \frac{\partial(w \cdot x+b)}{\partial w_j} \\
+    & =-\left[\frac{y-\sigma(w \cdot x+b)}{\sigma(w \cdot x+b)[1-\sigma(w \cdot x+b)]}\right] \sigma(w \cdot x+b)[1-\sigma(w \cdot x+b)] x_j \\
+    & =-[y-\sigma(w \cdot x+b)] x_j \\
+    & =[\sigma(w \cdot x+b)-y] x_j
+    \end{aligned}
+    \end{equation}
+
     ///
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamiento por Mini-batch
+
+    El algoritmo de descenso del gradiente estocástico es nombrado *estocástico* dado que elige una **una sóla** muestra aleatoria a la vez, ajustando los pesos con el fin de mejorar el desempeño de **sola** esa muestra. Esto puede generar movimientos muy irregulares, por lo que es habitual calcular el gradiente sobre lotes (*batches*) de muestras de entrenamiento en lugar de sobre una sola muestra.
+
+    En el **entrenamiento por lote** (**batch training**) calculamos el gradiente sobre el conjunto de entrenamiento completo. Al observar tantas muestras, el entrenamiento por lotes ofrece una estimación muy buena de la dirección en la que deben moverse los pesos, pero con el costo de gastar tiempo de procesamiento para cada muestra única en el conjunto de entrenamiento para calcular la dirección de ajuste.
+
+    Una alternativa es el **entrenamiento por mini-lote** (**mini-batch training**) : entrenamos para un grupo de $m$ muestras (512 o 1024, por ejemplo) menor a la cantidad total de las muestras del conjunto de datos completo. Si $m$ es del tamaño del conjunto de datos completo, usamos el descenso de gradiente por **lote**; si $m=1$, usamos el algoritmo de descenso del gradiente estocástico.
+
+    El entrenamiento por mini-batch tiene la ventaja de ser computacionalmente eficiente. Los mini-batches pueden ser facilmente vectorizados, lo cual permite procesar todos los batches en paralelo para posteriormente acumular la pérdida, algo que no es posible con el entrenamiento por batch o por actualización individual.
+
+    Definamos la versión minibatch de la función de pérdida de la entropía cruzada. Extenderemos la entropía cruzada de una sola muestra a un tamaño de muestra de tamaño $m$. Usaremos la notación que $x^{(i)}$ y $y^{(i)}$ significan la $i$-ésima característica y etiqueta, respectivamente. Supongamos que las muestras de entrenamiento son independientes :
+
+    \begin{equation}
+    \begin{aligned}
+    \log p(\text { training labels }) & =\log \prod_{i=1}^m p\left(y^{(i)} \mid x^{(i)}\right) \\
+    & =\sum_{i=1}^m \log p\left(y^{(i)} \mid x^{(i)}\right) \\
+    & =-\sum_{i=1}^m L_{\mathrm{CE}}\left(\hat{y}^{(i)}, y^{(i)}\right)
+    \end{aligned}
+    \end{equation}
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Ahora la función de costo para el mini-batch de $m$ muestras es la pérdida promedio para cada lote:
+
+    \begin{equation}
+    \begin{aligned}
+    \operatorname{Cost}(\hat{y}, y) & =\frac{1}{m} \sum_{i=1}^m L_{\mathrm{CE}}\left(\hat{y}^{(i)}, y^{(i)}\right) \\
+    & =-\frac{1}{m} \sum_{i=1}^m y^{(i)} \log \sigma\left(w \cdot x^{(i)}+b\right)+\left(1-y^{(i)}\right) \log \left(1-\sigma\left(w \cdot x^{(i)}+b\right)\right)
+    \end{aligned}
+    \end{equation}
+
+    El gradiente de mini-batch es el promedio de los gradientes individuales :
+
+    \begin{equation}
+    \frac{\partial \operatorname{Cost}(\hat{y}, y)}{\partial w_j}=\frac{1}{m} \sum_{i=1}^m\left[\sigma\left(w \cdot x^{(i)}+b\right)-y^{(i)}\right] x_j^{(i)}
+    \end{equation}
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Datos : Spector and Mazzeo (1980) - Program Effectiveness Data
+    ======================================================
+
+    Description
+    -----------
+
+    Experimental data on the effectiveness of the personalized system of instruction (PSI) program
+
+    Notes
+    -----
+    ::
+
+        Number of Observations - 32
+
+        Number of Variables - 4
+
+        Variable name definitions::
+
+            Grade - binary variable indicating whether or not a student's grade
+                    improved.  1 indicates an improvement.
+            TUCE  - Test score on economics test
+            PSI   - participation in program
+            GPA   - Student's grade point average
+
+
+    Source
+    ------
+
+    http://pages.stern.nyu.edu/~wgreene/Text/econometricanalysis.htm
+
+    The raw data was downloaded from Bill Greene's Econometric Analysis web site,
+    though permission was obtained from the original researcher, Dr. Lee Spector,
+    Professor of Economics, Ball State University.
+
+    Copyright
+    ---------
+
+    Used with express permission of the original author, who
+    retains all rights.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Regresión Logística con [`statsmodels`](https://www.statsmodels.org/stable/index.html)
+    """)
+    return
+
+
+@app.cell
+def _(sm):
+    ## Cargamos datos
+    spector_data = sm.datasets.spector.load_pandas()
+
+    ## Extraemos catacterísticas
+    spector_data.exog = sm.add_constant(spector_data.exog)
+
+    ## Definimos el modelo y lo estimamos
+    logit_mod = sm.Logit(spector_data.endog, spector_data.exog)
+    logit_res = logit_mod.fit()
+
+    ## Imprimimos los resultados
+    print(logit_res.summary())
+    return (logit_res,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Regresión Logística desde cero
     """)
     return
 
@@ -622,75 +904,167 @@ def _(np):
 
 @app.cell
 def _(np, predict_log):
+    ### Función que calcula el gradiente para el lote de dato
     def batch_gradients_log(X_batch, y_batch, w, b):
         # X_batch, w, b: same shape
         # y_batch: shape (batch_size,)
         batch_size = X_batch.shape[0]
         y_pred = predict_log(X_batch, w, b)
         residuals = (y_pred - y_batch)
-        grad_w = (2.0 / batch_size) * X_batch.T * residuals
-        grad_b = (2.0 / batch_size) * np.sum(residuals)
+        grad_w = (1.0 / batch_size) * X_batch.T.dot(residuals)
+        grad_b = (1.0 / batch_size) * np.sum(residuals)
         return grad_w, grad_b
 
 
 
+    return (batch_gradients_log,)
+
+
+@app.cell
+def _(batch_gradients_log, loss_cross_entropy, mo, np, predict_log):
+    # Descenso por gradiente estándar
+    def full_batch_gd_log(X, y, gamma=0.00999, n_epochs=500_000):
+        print("\nDescenso por gradiente estándar\n")
+        w = np.zeros(X.shape[1]) # unknown parameter vector
+        b = 0.0
+        loss_history = []
+        for epoch in mo.status.progress_bar(range(n_epochs), title = "Entrenando SGD (full-batch)" ) :
+            grad_w, grad_b = batch_gradients_log(X, y, w, b)
+            w -= gamma * grad_w
+            b -= gamma * grad_b
+
+            y_pred = predict_log(X, w, b)
+            loss = loss_cross_entropy(y, y_pred)
+            loss_history.append(loss)
+
+            if epoch % 50_000 == 0:
+                print(f"Epoch {epoch}: Loss (Cross-Entropy) = {loss:.8f}")
+
+        results = {
+            "w" : w, 
+            "b" : b, 
+            "loss_history" : loss_history
+        }
+
+        return results
+
+    return (full_batch_gd_log,)
+
+
+@app.cell
+def _(batch_gradients_log, loss_cross_entropy, mo, np, predict_log):
+    # SGD con mini-batch (SGD con un tamaño de batch pequeño, n = 50)
+    def mini_batch_sgd_log(X, y, batch_size=50, gamma=0.01, n_epochs=50):
+        print("\nSGD con mini-batch (SGD con un tamaño de batch pequeño, n = 50)\n")
+        w = np.zeros(X.shape[1])
+        b = 0.0
+        N = X.shape[0]
+        loss_history = []
+
+        for epoch in mo.status.progress_bar(range(n_epochs), title = "Entrenando SGD con mini-batch" ):
+            indices = np.random.permutation(N) # Shuffle data
+            for start in range(0, N, batch_size):
+                end = start + batch_size
+                batch_idx = indices[start:end]
+                X_batch = X[batch_idx]
+                y_batch = y[batch_idx]
+                grad_w, grad_b = batch_gradients_log(X_batch, y_batch, w, b)
+                w -= gamma * grad_w
+                b -= gamma * grad_b
+            # Check MSE after each epoch
+            y_pred = predict_log(X, w, b)
+            loss = loss_cross_entropy(y, y_pred)
+            loss_history.append(loss)
+
+            if epoch % 50_000 == 0:
+                print(f"Epoch {epoch}: Loss (Cross-Entropy) = {loss:.8f}")
+
+        results = {
+            "w" : w, 
+            "b" : b, 
+            "loss_history" : loss_history
+        }
+
+        return results
+
+    return (mini_batch_sgd_log,)
+
+
+@app.cell
+def _():
     return
 
 
 @app.cell
-def _(X, loss_cross_entropy, np, predict_log, sm):
+def _(batch_gradients_log, loss_cross_entropy, mo, np, predict_log, x):
+    # SGD con tamaño de batch igual a 1
+    def sgd_batch1_log(X, y, gamma=0.001, n_epochs=50):
+        print("\nSGD con tamaño de batch igual a 1\n")
+        w = np.zeros(X.shape[1])
+        b = 0.0
+        N = X.shape[0]
+        loss_history = []
+
+        for epoch in mo.status.progress_bar(range(n_epochs), title = "SGD con tamaño de batch igual a 1" ):
+            indices = np.random.permutation(N)
+            for i in indices:
+                X_i = X[i:i+1] # shape (1,2)
+                y_i = y[i:i+1] # shape (1,)
+                grad_w, grad_b = batch_gradients_log(X_i, y_i, w, b)
+                w -= gamma * grad_w
+                b -= gamma * grad_b
+            # MSE after epoch
+            y_pred = predict_log(X, w, b)
+            loss = loss_cross_entropy(y, y_pred)
+            loss_history.append(loss)
+
+            if epoch % 50_000 == 0:
+                print(f"Epoch {epoch}: Loss (Cross-Entropy) = {loss:.8f}")
+
+        results = {
+            "w" : x, 
+            "b" : b, 
+            "loss_history" : loss_history
+        }
+
+        return results
+
+    return
+
+
+@app.cell
+def _(full_batch_gd_log, mini_batch_sgd_log, sm):
+    # Obtengamos los datos de StatsModels
     X_log = sm.datasets.spector.load_pandas().exog.to_numpy()
     y_log = sm.datasets.spector.load_pandas().endog.to_numpy()
-    batch_size = X_log.shape[0]
 
-    w = np.zeros(X.shape[1]) # unknown parameter vector
-    b = 0.0
-    gamma = 0.00999
-
-    mse_history = []
-    for epoch in range(500_000):
-        y_pred = predict_log(X_log, w, b)
-        residuals = (y_pred - y_log)
-
-        w -= gamma * (2.0 / batch_size) * X_log.T.dot(residuals)
-        b -= gamma * (2.0 / batch_size) * np.sum(residuals)
-
-        y_pred = predict_log(X_log, w, b)
-        mse = loss_cross_entropy(y_log, y_pred)
-        mse_history.append(mse)
-    return b, mse_history, w
+    # Guardemos los resultados de los métodos en un diccionario
+    resultados_metodos_log = {
+        "GD (full-batch)" : full_batch_gd_log(X_log, y_log, gamma=0.00999, n_epochs=700_000), 
+        "Mini-Batch GD" : mini_batch_sgd_log(X_log, y_log, batch_size=50, gamma=0.014, n_epochs=700_000), 
+        #"SGD (batch = 1)" : sgd_batch1_log(X_log, y_log, gamma=0.0004, n_epochs=500_000)
+    } 
+    return (resultados_metodos_log,)
 
 
 @app.cell
-def _(mse_history):
-    mse_history[-10:]
+def _(resultados_metodos_log):
+    ### Pesos y sesgos calculados con 
+    resultados_metodos_log["GD (full-batch)"]["w"],resultados_metodos_log["GD (full-batch)"]["b"], 
     return
 
 
 @app.cell
-def _(b, w):
-    w, b
-
+def _(resultados_metodos_log):
+    ### Pesos y sesgos calculados con 
+    resultados_metodos_log["Mini-Batch GD"]["w"],resultados_metodos_log["Mini-Batch GD"]["b"], 
     return
 
 
 @app.cell
-def _(sm):
-    spector_data = sm.datasets.spector.load_pandas()
-    spector_data.exog = sm.add_constant(spector_data.exog)
-    logit_mod = sm.Logit(spector_data.endog, spector_data.exog)
-    logit_res = logit_mod.fit()
+def _(logit_res):
+    ## Imprimimos los resultados
     print(logit_res.summary())
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
     return
 
 
