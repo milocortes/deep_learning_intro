@@ -22,11 +22,11 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    En Machine Learning se necesita de medidas matemáticas que puedan comparar la distribución de probabilidad generala por un modelo contra la distribución de probabilidad observada en los datos. Estas medidas proporcionan un valor escalar que indica qué tan bien se ajustan nuestras predicciones con los valores observados.
+    En Machine Learning se necesita de medidas matemáticas que puedan comparar la distribución de probabilidad generada por un modelo contra la distribución de probabilidad observada en los datos. Estas medidas proporcionan un valor escalar que indica qué tan bien se ajustan nuestras predicciones con los valores observados.
 
-    La funnción de pérdida **entropía cruzada** (*cross-entropy*) nos proporciona un principio matemático de esta medida y nos proporciona una métrica que nos dice qué tan bien nuestro modelo entiende los patrones estadísticos observados en los datos.
+    La función de pérdida **entropía cruzada** (*cross-entropy*) nos proporciona un principio matemático de esta medida así como también una métrica que nos dice qué tan bien nuestro modelo entiende los patrones estadísticos observados en los datos.
 
-    La entropía cruzada nos proporciona una manera de medir en qué medida la distribución predicha por el modelo difiere de las distribuciones reales que observamos en los datos de entrenamiento.
+    La entropía cruzada nos proporciona una manera de medir cómo la distribución predicha por el modelo difiere de las distribuciones reales que observamos en los datos de entrenamiento.
 
     Una característica importante de la entropía cruzada es su conexión natural con la estimación por máxima verosimilitud. Cuando minimizamos la entropía cruzada en un conjunto de datos, simultaneamente maximizamos la probabilidad que el modelo asigne las salidas de los datos de entrenamiento a la verdadera distribución de probabilidad. Esta propiedad es el fundamento teórico para responder a la pregunta de cómo medimos la calidad de un modelo probabilístico.
 
