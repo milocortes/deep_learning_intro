@@ -315,6 +315,46 @@ def _(sinco_eci_ingresos):
 
 @app.cell
 def _():
+    import seaborn as sns
+
+    df = sns.load_dataset("titanic")
+    df
+    return df, sns
+
+
+@app.cell
+def _(df, sns):
+    sns.violinplot(data=df, x="class", y="age", hue="alive", split=True, gap=.1, inner="quart")
+    return
+
+
+@app.cell
+def _(pl, sinco_eci_ingresos):
+    sinco_eci_ingresos_violin = sinco_eci_ingresos.select("eci", "est", "nombre_sinco_1d").with_columns(
+        (pl.col("est") - pl.col("est").mean())/pl.col("est").std()
+    ).unpivot(
+        ["eci", "est"], index="nombre_sinco_1d"
+    ).rename(
+        {
+            "nombre_sinco_1d" : "sinco_1d", 
+            "variable" : "indicador"
+        }
+    )
+    sinco_eci_ingresos_violin
+    return (sinco_eci_ingresos_violin,)
+
+
+@app.cell
+def _(sinco_eci_ingresos_violin, sns):
+    g = sns.violinplot(
+        data=sinco_eci_ingresos_violin, x="sinco_1d", y="value", hue="indicador", split=True, gap=.1, inner="quart"
+    )
+    g#.set_xticklabels([item.get_text() for item in g.xaxis.get_ticklabels()], rotation = 45)
+    return
+
+
+@app.cell
+def _():
     return
 
 
