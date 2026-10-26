@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.25.2"
 app = marimo.App(width="medium")
 
 
@@ -135,31 +135,6 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Entrenamiento con Regresión Logística
-    """)
-    return
-
-
-@app.cell
-def _(sm):
-    ## Cargamos datos
-    spector_data = sm.datasets.spector.load_pandas()
-
-    ## Extraemos catacterísticas
-    spector_data.exog = sm.add_constant(spector_data.exog)
-
-    ## Definimos el modelo y lo estimamos
-    logit_mod = sm.Logit(spector_data.endog, spector_data.exog)
-    logit_res = logit_mod.fit()
-
-    ## Imprimimos los resultados
-    print(logit_res.summary())
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
     ## Entrenamiento de Logistic Neural Network Regression con Descenso por Gradiente
     """)
     return
@@ -170,9 +145,9 @@ def _():
     import jax 
     import jax.numpy as jnp 
     import numpy as np 
-    import statsmodels.api as sm
 
-    return jax, jnp, np, sm
+
+    return jax, jnp, np
 
 
 @app.cell
@@ -181,16 +156,12 @@ def _(jnp, np):
         return 1 / (1 + jnp.exp(-z))
 
     def predict(weights, bias, predictors):
-        """ Probabilities of the positive class """
         return logistic(jnp.dot(predictors, weights) + bias)
 
     def loss(weights, bias, predictors, targets):
-        # while not the most numerically stable, 
-        # this form more closely parallels the likelihood function above
         preds = predict(weights, bias, predictors)
         term_1 = targets * jnp.log(preds + 1e-15)
         term_2 = (1 - targets) * jnp.log(1 - preds + 1e-15)
-        # jnp.mean = (1/n * sum)
         return -jnp.mean(term_1 + term_2)
 
     def generate_data(num_samples = 100_000, seed = 42):
