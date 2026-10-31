@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.25.2"
 app = marimo.App(width="medium")
 
 
@@ -29,7 +29,7 @@ def _(mo):
 @app.cell
 def _(pd):
     ### Cargamos datos de Skills de O*NET
-    skills = pd.read_table("datos/ocupaciones/datos/Skills.txt")
+    skills = pd.read_table("datos/ocupaciones/datos/Knowledge.txt")
     skills
     return (skills,)
 
@@ -149,7 +149,7 @@ def _(skill_sinco_3d):
     trade_cols = {'time':'year', 'loc':'sinco_3d', 'prod':'Element Name', 'val':'Data Value'}
     cdata = ecomplexity(skill_sinco_3d, trade_cols)
     cdata
-    return (cdata,)
+    return cdata, trade_cols
 
 
 @app.cell
@@ -355,6 +355,43 @@ def _(sinco_eci_ingresos_violin, sns):
 
 @app.cell
 def _():
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _(sinco_eci_ingresos):
+    sinco_eci_ingresos
+    return
+
+
+@app.cell
+def _(sinco_eci_ingresos, sns):
+    sns.distplot(sinco_eci_ingresos['eci'], hist = False, kde = True,
+                     kde_kws = {'shade': True, 'linewidth': 3})
+    return
+
+
+@app.cell
+def _(sinco_eci_ingresos, sns):
+    # Density Plot and Histogram of all arrival delays
+    sns.distplot(sinco_eci_ingresos['eci'], hist=True, kde=True, 
+                 bins=int(180/5), color = 'darkblue', 
+                 hist_kws={'edgecolor':'black'},
+                 kde_kws={'linewidth': 4})
+    return
+
+
+@app.cell
+def _(skill_sinco_3d, trade_cols):
+    from ecomplexity import proximity
+
+    df_proximity = proximity(skill_sinco_3d, trade_cols)
+    df_proximity
     return
 
 
