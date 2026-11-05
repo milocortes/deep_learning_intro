@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.25.2"
 app = marimo.App(width="medium")
 
 
@@ -123,63 +123,228 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    import matplotlib.pyplot as plt
-    import jax.numpy as np
-    import jax
-    from jax import random
-    import seaborn as sns
-    sns.set(
-        style='white',
-        context='talk'
-    )
-    red, blue, green = sns.color_palette('Set1', 3)
-    from sklearn.metrics import confusion_matrix
-
-
-    return jax, np
-
-
-@app.cell
-def _(jax, np):
-    import keras
-    (X_train, Y_train), (X_test, Y_test) = keras.datasets.mnist.load_data()
-    X_train, X_test = (X_train/255).astype(np.float32), (X_test/255).astype(np.float32)
-
-    Y_train = jax.nn.one_hot(Y_train, 10).astype(np.float32)
-    Y_test = jax.nn.one_hot(Y_test, 10).astype(np.float32)
-    Y_train
-    return X_test, Y_test
-
-
-@app.cell
-def _(jax, np):
-    def NLL(W, X, Y, ϵ=1e-10):
-        Z = X @ W # (n, 784) @ (784, 10) -> (n,10)
-        Yhat = jax.nn.softmax(Z)    
-        return -(Y * np.log(Yhat)).sum() / X.shape[0] # 2D sum over i and k
-
-    def accuracy(W, X, Y):
-        Z = X @ W
-        # no need for softmax here, it's monotone so won't change the result
-        return (Z.argmax(axis=1) == Y.argmax(axis=1)).mean()
-
-    return NLL, accuracy
-
-
-@app.cell
-def _(W, X_test, Y_test, accuracy):
-    accuracy(W, X_test, Y_test)
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Implementación en JAX
+    """)
     return
 
 
 @app.cell
-def _(NLL, X_test, Y_test, accuracy, np):
-    W = np.zeros((X_test.shape[1], Y_test.shape[1])) 
-    print('NLL:', NLL(W, X_test, Y_test))
-    print('Accuracy', accuracy(W, X_test, Y_test))
-    return (W,)
+def _():
+    import jax
+    import jax.numpy as jnp
+
+    def predict(weights, bias, X):
+        return jax.nn.softmax(jax.lax.batch_matmul(X, weights) + bias)
+
+    def cross_entropy(logprobs, targets):
+        target_class = jnp.argmax(targets, axis=1)
+        nll = jnp.take_along_axis(
+            logprobs, 
+            jnp.expand_dims(target_class, axis=1), 
+            axis=1
+        )
+        ce = -jnp.mean(nll)
+        return ce
+
+    def loss(weights, bias, X, y):
+        y_hat = predict(weights, bias, X)
+        return cross_entropy(y_hat, y)
+
+    grad = jax.grad(loss, argnums=(0, 1))
+
+    @jax.jit
+    def update_step(weights, bias, predictors, targets, learning_rate):
+        dw, db = grad(weights, bias, predictors, targets)
+        new_weights = weights - learning_rate * dw
+        new_bias = bias - learning_rate * db
+        return new_weights, new_bias
+
+    return jax, jnp, loss, predict, update_step
+
+
+@app.cell
+def _(jnp, loss, update_step):
+    def train_model(X, y, n_classes, key):
+        w = jnp.ones( [4, n_classes])
+        b = jnp.zeros([n_classes])
+
+        learning_rate = 0.1
+
+        for i in range(12000):
+            w, b = update_step(w, b, X, y, learning_rate)
+            if i % 1000 == 0:
+                current_loss = loss(w, b, X, y)
+                print(f"Epoch {i}: Loss = {current_loss:.4f}")
+
+        print(f"Learned Weights: {w}")
+        print(f"Learned Bias: {b}")
+
+        return w, b 
+
+
+    return (train_model,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## The Iris Dataset
+    This data sets consists of 3 different types of irises’ (Setosa, Versicolour, and Virginica) petal and sepal length, stored in a 150x4 numpy.ndarray
+
+    The rows being the samples and the columns being: Sepal Length, Sepal Width, Petal Length and Petal Width.
+    """)
+    return
+
+
+@app.cell
+def _(jax):
+    from sklearn import datasets
+
+
+    iris = datasets.load_iris()
+    xs = iris.data
+    n_classes = max(iris.target) + 1
+    ys = jax.nn.one_hot(iris.target, n_classes)
+    return iris, n_classes, xs, ys
+
+
+@app.cell
+def _(iris):
+    import matplotlib.pyplot as plt
+
+    _, ax = plt.subplots()
+    scatter = ax.scatter(iris.data[:, 0], iris.data[:, 1], c=iris.target)
+    ax.set(xlabel=iris.feature_names[0], ylabel=iris.feature_names[1])
+    _ = ax.legend(
+        scatter.legend_elements()[0], iris.target_names, loc="upper right", title="Classes"
+    )
+    plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamiento del modelo con JAX
+    """)
+    return
+
+
+@app.cell
+def _(jax, n_classes, predict, train_model, xs, ys):
+    key = jax.random.PRNGKey(0)
+
+    w,b = train_model(xs, ys, n_classes, key)
+
+    y_hat = predict(w, b, xs )
+    return (y_hat,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Performance Metrics
+    """)
+    return
+
+
+@app.cell
+def _(iris, y_hat, ys):
+    from sklearn.metrics import classification_report
+
+    ### Decodificamos one-hot
+    ys_label = ys.argmax(axis=1)
+    y_hat_label = y_hat.argmax(axis=1)
+
+    ### Métricas de desempeño
+    cr = classification_report(ys_label , y_hat_label , target_names=iris.target_names)
+    print(cr)
+    return classification_report, cr, ys_label
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Entrenamiento del modelo con [statsmodels](https://www.statsmodels.org/stable/index.html)
+    """)
+    return
+
+
+@app.cell
+def _():
+    import statsmodels.formula.api as smf
+    import seaborn as sns
+    import numpy as np 
+
+    # Cargamos el conjunto de datos de sns
+    df = sns.load_dataset('iris')
+
+    df["species"] = df["species"].replace({'setosa' : 0.0, 'versicolor' : 1.0, 'virginica' : 2.0}).astype(float)
+
+    # Ajustamos el modelo de regresión logística multinomial (mnlogit)
+    # La variable dependiente es 'species' (3 categorías)
+    # Las variables independientes son las medidas del sépalo y pétalo
+    formula = 'species ~ sepal_length + sepal_width + petal_length + petal_width'
+    multinomial_model = smf.mnlogit(formula, data=df).fit(method="bfgs")
+
+    # Resumen estadístico
+    print(multinomial_model.summary())
+    return df, multinomial_model, np
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Performance Metrics
+    """)
+    return
+
+
+@app.cell
+def _(df, multinomial_model, np):
+    # 1. Predecir probabilidades
+    pred_probs = multinomial_model.predict(df.iloc[:, 0:4]).to_numpy()
+
+    # 2. Obtener la clase con mayor probabilidad
+    pred_classes = np.argmax(pred_probs, axis=1)
+    return (pred_classes,)
+
+
+@app.cell
+def _(classification_report, iris, pred_classes, ys_label):
+    ### Métricas de desempeño
+    cr_sm = classification_report(ys_label , pred_classes , target_names=iris.target_names)
+    print(cr_sm)
+    return
+
+
+@app.cell
+def _(cr):
+    print(cr)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Tarea
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    /// admonition | Puntos a evaluar
+
+    * Implementa la función `train_model` con el algoritmo de descenso por gradiente estocástico (SGD) con mini-batch con tamaños $m=1$ y $m=20$.
+    * Reentrena los pesos con estas nuevas implementaciones y verifica las métricas de desempeño.
+    ///
+    """)
+    return
 
 
 if __name__ == "__main__":
