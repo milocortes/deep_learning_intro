@@ -167,15 +167,16 @@ def _():
 
 @app.cell
 def _(jnp, loss, update_step):
-    def train_model(X, y, n_classes, key):
-        w = jnp.ones( [4, n_classes])
+    def train_model(X, y, n_classes, key, n_epochs, n_epoch_report):
+        n_features = X.shape[1]
+        w = jnp.ones( [n_features, n_classes])
         b = jnp.zeros([n_classes])
 
         learning_rate = 0.1
 
-        for i in range(12000):
+        for i in range(n_epochs):
             w, b = update_step(w, b, X, y, learning_rate)
-            if i % 1000 == 0:
+            if i % n_epoch_report == 0:
                 current_loss = loss(w, b, X, y)
                 print(f"Epoch {i}: Loss = {current_loss:.4f}")
 
@@ -222,7 +223,7 @@ def _(iris):
         scatter.legend_elements()[0], iris.target_names, loc="upper right", title="Classes"
     )
     plt.show()
-    return
+    return (plt,)
 
 
 @app.cell(hide_code=True)
@@ -237,10 +238,10 @@ def _(mo):
 def _(jax, n_classes, predict, train_model, xs, ys):
     key = jax.random.PRNGKey(0)
 
-    w,b = train_model(xs, ys, n_classes, key)
+    w,b = train_model(xs, ys, n_classes, key, 1200, 100)
 
     y_hat = predict(w, b, xs )
-    return (y_hat,)
+    return key, y_hat
 
 
 @app.cell(hide_code=True)
@@ -344,6 +345,89 @@ def _(mo):
     * Reentrena los pesos con estas nuevas implementaciones y verifica las métricas de desempeño.
     ///
     """)
+    return
+
+
+@app.cell
+def _(np):
+    import keras
+    (X_train, Y_train), (X_test, Y_test) = keras.datasets.mnist.load_data()
+    X_train, X_test = (X_train/255).astype(np.float32), (X_test/255).astype(np.float32)
+
+
+    return X_test, X_train, Y_test, Y_train
+
+
+@app.cell
+def _(X_train, plt):
+    def display_image(im, ax=None):
+        if ax is None: fig, ax = plt.subplots()
+        ax.imshow(im, cmap='gray_r')
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    display_image(X_train[2, :, :])
+    plt.show()
+
+    return
+
+
+@app.cell
+def _(Y_train):
+    Y_train
+    return
+
+
+@app.cell
+def _(Y_test, Y_train, jax, np):
+    Y_train_oh = jax.nn.one_hot(Y_train, 10).astype(np.float32)
+    Y_test_oh = jax.nn.one_hot(Y_test, 10).astype(np.float32)
+
+    Y_test_oh
+    return Y_test_oh, Y_train_oh
+
+
+@app.cell
+def _(X_test, X_train):
+    X_train_flatten = X_train.reshape(-1, 28*28)
+    X_test_flatten = X_test.reshape(-1, 28*28)
+    return X_test_flatten, X_train_flatten
+
+
+@app.cell
+def _(X_train_flatten, Y_train_oh, key, train_model):
+    n_classes_mnist = 10
+    w_mnist,b_mnist = train_model(X_train_flatten, Y_train_oh, n_classes_mnist, key, 2000, 100)
+
+    #y_hat = predict(w, b, xs )
+
+    return b_mnist, w_mnist
+
+
+@app.cell
+def _(Y_test_oh):
+    Y_test_oh.argmax(axis=1)
+    return
+
+
+@app.cell
+def _(X_test_flatten, b_mnist, predict, w_mnist):
+    predict(w_mnist, b_mnist, X_test_flatten ).argmax(axis=1)
+    return
+
+
+@app.cell
+def _(
+    X_test_flatten,
+    Y_test_oh,
+    b_mnist,
+    classification_report,
+    predict,
+    w_mnist,
+):
+    print(
+        classification_report(predict(w_mnist, b_mnist, X_test_flatten ).argmax(axis=1) , Y_test_oh.argmax(axis=1)  )
+    )
     return
 
 
