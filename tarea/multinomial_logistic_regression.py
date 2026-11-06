@@ -102,7 +102,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    De manera que la función de pérdida entropía cruzada para la regresión multinomial se simplifica al log de la probabilidad estimada de la clase correcta:
+    De manera que la función de pérdida entropía cruzada para la regresión multinomial se simplifica al log de la probabilidad estimada de la clase correcta, por lo que también es llamada **negative log likelihood loss (NLL)** :
 
     \begin{equation}
     \begin{aligned}
