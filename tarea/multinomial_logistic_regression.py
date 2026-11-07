@@ -136,9 +136,11 @@ def _():
     import jax
     import jax.numpy as jnp
 
+    ## Función que calcula la predicción del modelo dados los pesos y sesgos y las características
     def predict(weights, bias, X):
         return jax.nn.softmax(jax.lax.batch_matmul(X, weights) + bias)
 
+    ## Función que calcula la entropía cruzada generalizada para tareas de clasificación multietiqueta (más de dos clases)
     def cross_entropy(logprobs, targets):
         target_class = jnp.argmax(targets, axis=1)
         nll = jnp.take_along_axis(
@@ -149,13 +151,26 @@ def _():
         ce = -jnp.mean(nll)
         return ce
 
+    ## Función de pérdida para tareas de clasificación multietiqueta (más de dos clases)
     def loss(weights, bias, X, y):
         y_hat = predict(weights, bias, X)
         return cross_entropy(y_hat, y)
 
+    ## Gradiente de la función de pérdida. El argumento `argnums=(0, 1)` indica que la función `grad`
+    ## calculará el gradiente para los dos primeros argumentos de la función `loss`, esto es : 
+    ##  - weigths
+    ##  - bias
     grad = jax.grad(loss, argnums=(0, 1))
 
-    @jax.jit
+
+    ## Función que: 
+    ## 1. Calcula gradientes de la función de perdida para los pesos y sesgos
+    ## 2. Actualiza los pesos con los gradientes calculados
+    ## Usamos la compilación Just-In-Time, JIT, para crear código optimizado 
+    ## para reducir la latencia y usar el hardware eficientemente. 
+    ## NOTA = Por default la optimización se enfocará en CPU. En caso
+    ## de contar con un equipo con GPU, cambie el backend por "gpu"
+    @jax.jit(backend="cpu")
     def update_step(weights, bias, predictors, targets, learning_rate):
         dw, db = grad(weights, bias, predictors, targets)
         new_weights = weights - learning_rate * dw
@@ -167,6 +182,8 @@ def _():
 
 @app.cell
 def _(jnp, loss, update_step):
+    ## Función que entrena los pesos y sesgos de la regresión multinomial mediante 
+    ## el algoritmo de descenso por gradiente.
     def train_model(X, y, n_classes, key, n_epochs, n_epoch_report):
         n_features = X.shape[1]
         w = jnp.ones( [n_features, n_classes])
@@ -204,10 +221,16 @@ def _(mo):
 def _(jax):
     from sklearn import datasets
 
-
+    ## Cargamos dataset 
     iris = datasets.load_iris()
+
+    ## Obtenemos las caracteristicas
     xs = iris.data
+
+    ## Cantidad de clases o tipos a pronosticar
     n_classes = max(iris.target) + 1
+
+    ## Vector de clases verdaderas u observadas
     ys = jax.nn.one_hot(iris.target, n_classes)
     return iris, n_classes, xs, ys
 
@@ -236,10 +259,13 @@ def _(mo):
 
 @app.cell
 def _(jax, n_classes, predict, train_model, xs, ys):
+    ## Definimos semilla para reproducibilidad
     key = jax.random.PRNGKey(0)
 
+    ## Entrenamos los pesos del modelo
     w,b = train_model(xs, ys, n_classes, key, 1200, 100)
 
+    ## Calculamos el pronóstico del modelo
     y_hat = predict(w, b, xs )
     return key, y_hat
 
@@ -348,38 +374,64 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # MNIST dataset: clasificación de imágenes
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    [MNIST](https://en.wikipedia.org/wiki/MNIST_database) es un dataset de dígitos escritos a mano usado comunmente para el entrenamiento de sistemas de procesamiento de imágenes. MNIST contiene 60,000 imágenes de entrenamiento y 10,000 imágenes de prueba.
+
+    De la paquetería de redes neuronales [Keras](https://keras.io/) podemos descargar el dataset.
+
+
+
+    Cada muestra en este conjunto de datos es de 28x28 píxeles en escala de grises, lo que constituye nuestras 784 características. Cada imagen muestra un único dígito escrito a mano, por lo que nuestra variable objetivo pertenece a una de 10 clases (0, 1, 2, 3, 4, 5, 6, 7, 8, 9).
+    """)
+    return
+
+
 @app.cell
 def _(np):
     import keras
+    ## Cargamos los datos de MNIST
     (X_train, Y_train), (X_test, Y_test) = keras.datasets.mnist.load_data()
-    X_train, X_test = (X_train/255).astype(np.float32), (X_test/255).astype(np.float32)
 
+    ## Normalizamos la escala de grises para que los valores estén entre 0 y 1
+    X_train, X_test = (X_train/255).astype(np.float32), (X_test/255).astype(np.float32)
 
     return X_test, X_train, Y_test, Y_train
 
 
 @app.cell
 def _(X_train, plt):
+    ## Función que grafica una imagen de dataset
     def display_image(im, ax=None):
         if ax is None: fig, ax = plt.subplots()
         ax.imshow(im, cmap='gray_r')
         ax.set_xticks([])
         ax.set_yticks([])
-    
+
     display_image(X_train[2, :, :])
     plt.show()
-
     return
 
 
 @app.cell
 def _(Y_train):
+    ## Imprimimos el vector de clases
     Y_train
     return
 
 
 @app.cell
 def _(Y_test, Y_train, jax, np):
+    ## Convertimos el vector de clases a formato one-hot encoding
     Y_train_oh = jax.nn.one_hot(Y_train, 10).astype(np.float32)
     Y_test_oh = jax.nn.one_hot(Y_test, 10).astype(np.float32)
 
@@ -389,6 +441,8 @@ def _(Y_test, Y_train, jax, np):
 
 @app.cell
 def _(X_test, X_train):
+    ## La regresión multinomial softmax no maneja arreglos en 2D (imágenes), sino arreglos 1D. 
+    ## "Aplanamos" los arreglos 2D (28x28) a un arreglo en 1D (784)
     X_train_flatten = X_train.reshape(-1, 28*28)
     X_test_flatten = X_test.reshape(-1, 28*28)
     return X_test_flatten, X_train_flatten
@@ -396,24 +450,13 @@ def _(X_test, X_train):
 
 @app.cell
 def _(X_train_flatten, Y_train_oh, key, train_model):
+    ## Definimos la cantidad de clases
     n_classes_mnist = 10
-    w_mnist,b_mnist = train_model(X_train_flatten, Y_train_oh, n_classes_mnist, key, 2000, 100)
 
-    #y_hat = predict(w, b, xs )
+    ## Entrenamos los pesos y sesgos del modelo
+    w_mnist,b_mnist = train_model(X_train_flatten, Y_train_oh, n_classes_mnist, key, 200, 100)
 
     return b_mnist, w_mnist
-
-
-@app.cell
-def _(Y_test_oh):
-    Y_test_oh.argmax(axis=1)
-    return
-
-
-@app.cell
-def _(X_test_flatten, b_mnist, predict, w_mnist):
-    predict(w_mnist, b_mnist, X_test_flatten ).argmax(axis=1)
-    return
 
 
 @app.cell
@@ -425,9 +468,33 @@ def _(
     predict,
     w_mnist,
 ):
-    print(
-        classification_report(predict(w_mnist, b_mnist, X_test_flatten ).argmax(axis=1) , Y_test_oh.argmax(axis=1)  )
-    )
+    ## Obtenemos el pronóstico de clases con los pesos y sesgos entrenados para el conjunto de entrenamiento
+    y_hat_mnist = predict(w_mnist, b_mnist, X_test_flatten ).argmax(axis=1) 
+
+    ## Construimos el vector de las clases verdaderas en el conjunto de entrenamiento
+    y_true_mnist = Y_test_oh.argmax(axis=1)
+
+    ## Imprimimos métricas del desempeño de la clasificación
+    cr_mnist = classification_report(y_hat_mnist,  y_true_mnist)
+
+    print(cr_mnist)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    /// admonition | Puntos a evaluar
+
+    * Implementa la función `train_model_gpu` la cual hará uso de la función `update_step_gpu` la cual realizará la optimización JIT en GPU. La función `train_model_gpu` usará el algoritmo de descenso por gradiente convencional.
+
+    * Entrena los pesos y sesgos para el dataset MNIST.
+
+    * Contabiliza los tiempos de ejecución para el entrenamiento con CPU y GPU. ¿Cuántas veces es más rápido el entrenamiento por GPU vs CPU?
+
+    * Verifica las métricas de desempeño.
+    ///
+    """)
     return
 
 
