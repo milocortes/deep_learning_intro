@@ -29,16 +29,18 @@ def _(mo):
 @app.cell
 def _(pd):
     ### Cargamos datos de Skills de O*NET
-    skills = pd.read_table("datos/ocupaciones/datos/Knowledge.txt")
+    datos_filename = "Abilities"
+    skills = pd.read_table(f"datos/ocupaciones/datos/{datos_filename}.txt")
     skills
-    return (skills,)
+    return datos_filename, skills
 
 
 @app.cell
 def _(skills):
+    escala_medicion = "LV"
     ### Filtramos por Scale ID == "IM" y por el último levantamiento Date == "08/2023"
     skill_filtradas = skills[
-        (skills["Scale ID"] == 'IM') 
+        (skills["Scale ID"] == escala_medicion) 
     ][
         ["O*NET-SOC Code", "Element ID", "Element Name", "Data Value"]
     ].reset_index(
@@ -52,7 +54,7 @@ def _(skills):
     ).reset_index()
 
     skill_filtradas
-    return (skill_filtradas,)
+    return escala_medicion, skill_filtradas
 
 
 @app.cell
@@ -149,7 +151,7 @@ def _(skill_sinco_3d):
     trade_cols = {'time':'year', 'loc':'sinco_3d', 'prod':'Element Name', 'val':'Data Value'}
     cdata = ecomplexity(skill_sinco_3d, trade_cols)
     cdata
-    return cdata, trade_cols
+    return (cdata,)
 
 
 @app.cell
@@ -205,7 +207,7 @@ def _(coe1t226, pl, sdemt226):
     ).drop_nulls(subset=["ingocup", "sinco"] )
 
     enoe
-    return (enoe,)
+    return enoe, np
 
 
 @app.cell
@@ -387,11 +389,361 @@ def _(sinco_eci_ingresos, sns):
 
 
 @app.cell
-def _(skill_sinco_3d, trade_cols):
-    from ecomplexity import proximity
+def _():
+    return
 
-    df_proximity = proximity(skill_sinco_3d, trade_cols)
-    df_proximity
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Cálculo de Similaridad entre Ocupaciones
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Matriz de Especialización, $R$
+
+    * Una Matriz de Especialización, $R$, se define al dividir cada entrada de la matriz $X_{c p}$ por la suma de sus respectivas filas o columnas.
+    * Está medida se le conoce como **cociente de ubicación** o **Revealed Comparative Advantage, (RCA)**.
+
+
+    \begin{equation}
+        R_{c p}= \frac{x_{c p} / \Sigma_p x_{c p}}{\Sigma_c x_{c p} / \Sigma_c \Sigma_p x_{c p}}
+    \end{equation}
+
+    * Ubicaciones con $R_{c p} > 1$ se consideran **especializadas en la actividad $p$**.
+    """)
+    return
+
+
+@app.cell
+def _(pl, skill_sinco_3d):
+    datos_rca = pl.from_pandas(skill_sinco_3d.dropna()).with_columns(
+        rca = (
+            pl.col("Data Value")/pl.col("Data Value").sum().over("nombre_sinco_2019")
+        ) /
+        (
+            pl.col("Data Value").sum().over("Element Name")/pl.col("Data Value").sum()
+        )
+
+    )
+
+    datos_rca
+    return (datos_rca,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Matriz de Especialización Binaria, $M$
+
+     Definimos la Matriz de Especialización Binaria, $M$, como
+
+    \begin{equation}
+    M_{c p}=\left\{\begin{array}{lll}
+    1 & \text { if } & R_{c p} \geq R^{\star} \\
+    0 & \text { if } & R_{c p}<R^{\star}
+    \end{array}\right.
+    \end{equation}
+
+    donde $R^{\star}=1$ cuando usamos $R$ y $R^{\star}=0.25$ cuando usamos $R^{\text{pop}}$
+    """)
+    return
+
+
+@app.cell
+def _(datos_rca, pl):
+    ## Umbral de RCA
+    rca_umbral = 1.0
+
+    datos_rca_m = datos_rca.with_columns(
+        M = pl.when(
+            pl.col("rca")>= rca_umbral   
+        ).then(
+            pl.lit(1)
+        ).otherwise(
+            pl.lit(0)
+        )
+    )
+    datos_rca_m
+    return (datos_rca_m,)
+
+
+@app.cell
+def _(datos_rca_m):
+    M_df = datos_rca_m.pivot("Element Name", 
+                      index = "nombre_sinco_2019", 
+                      values = "M"
+                ).fill_null(0).sort("nombre_sinco_2019")
+    M_df
+    return (M_df,)
+
+
+@app.cell
+def _(M_df, pl):
+    M = M_df.select(
+        pl.exclude("nombre_sinco_2019")
+    ).to_numpy()
+
+    M
+    return (M,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Proximidad
+
+    Hay múltiples formas de medir **Proximidad**. Algunas, como la **probabilidad condicional mínima**, miran a la colocalización o coaglomeración de actividades:
+
+    \begin{equation}
+      \phi_{p p^{\prime}}=\frac{\sum_c M_{c p} M_{c p^{\prime}}}{\max \left(M_p, M_{p,}\right)}
+    \end{equation}
+    """)
+    return
+
+
+@app.cell
+def _(M, np):
+    ## Calculamos diversidad
+    diversidad = M.sum(axis = 1)
+    D = np.diag(diversidad)
+
+    ## Calculamos ubicuidad
+    ubicuidad = M.sum(axis = 0)
+    U = np.diag(ubicuidad)
+
+    ## Calculamos proximidad
+    proximity = M.T @ M / ubicuidad[np.newaxis, :]  
+    proximity = np.minimum(proximity, proximity.T)
+    proximity = np.nan_to_num(proximity)
+    proximity
+    return D, U, proximity
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Relatedness Density
+
+    * Con la medida de proximidad, podemos calcular **Relatedness Density** como la fracción de actividades relacionadas presentes en una ubicación
+
+    \begin{equation}
+    \omega_{c p}=\frac{\sum_{p \prime} M_{c p \prime} \phi_{p p^{\prime}}}{\sum_{p,} \phi_{p p^{\prime}}} \quad \circ \quad \omega_{c p}=\frac{\sum_{c^{\prime}} M_{c^{\prime}} \phi_{c^{\prime} c}}{\sum_{c^{\prime}} \phi_{c^{\prime} c}}
+    \end{equation}
+    """)
+    return
+
+
+@app.cell
+def _(M, np, proximity):
+    density = (np.dot(M,proximity)/np.sum(proximity, axis=1))
+    density = np.nan_to_num(density)
+    density
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Distancia
+    - La Proximidad mide la similaridad entre pares de actividades-productos.
+    - Necesitamos una medida que cuantifique la **Distancia** entre las actividades especializadas en un país y las actividades donde no está especializada.
+
+
+    \begin{equation}
+    d_{c p}=\frac{\sum_{p'} (1 - M_{c p'}) \phi_{p p^{\prime}}}{\sum_{p,} \phi_{p p^{\prime}}}
+    \end{equation}
+
+    - La distancia nos da una idea de qué tan lejos está cada actividad dado el ecosistema productivo del país.
+    """)
+    return
+
+
+@app.cell
+def _(M, np, proximity):
+    distancia = (np.dot((1 - M),proximity)/np.sum(proximity, axis=1))
+    distancia = np.nan_to_num(distancia)
+    distancia
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Economic Complexity
+
+    - Las medidas de **Complejidad Económica** miden la capacidad económica con **métodos de reducción de dimensionalidad**.
+    - Representan también funciones de producción generalizadas de dimensionalidad reducida.
+    - Las medidas de complejidad económica pueden ser utilizadas para medir la presencia de múltiples factores económicos en una forma que es **agnóstica** sobre cuales podrían ser esos factores.
+      - Formalmente, la complejidad $K_c$ de una ubicación $c$ y la complejidad $K_p$ de una actividad $p$ puede definirse como una función una de la otra:
+
+    \begin{equation}
+    K_c=f\left(M_{c p}, K_p\right)
+    \end{equation}
+
+    \begin{equation}
+    K_p=g\left(M_{c p}, K_c\right)
+    \end{equation}
+
+    - Estas ecuaciones declaran que la complejidad de una ubicación es una función de la complejidad de las actividades que están presentes en esta, y viceversa.
+    - Una economía es tan compleja como las actividades que puede realizar, y una actividad es tan compleja como los lugares que pueden realizarla.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## ¿Cómo medimos la complejidad?
+
+    - La idea de medir la complejidad usando estas ecuaciones acopladas fue introducida por Cesar Hidalgo y Ricardo Haussman. Los autores utilizan promedios simples para $f$ y $g$.
+    - Las medidas resultantes se conocen como **Índice de Complejidad Económica, (ECI; $K_c$)** y el **Índice de Complejidad de Producto, (PCI; $K_p$)**.
+    - Estas medidas están definidas por el siguiente sistema de ecuaciones:
+
+    \begin{equation}
+    K_c=\frac{1}{M_c} \sum_p M_{c p} K_p
+    \end{equation}
+
+    \begin{equation}
+    K_p=\frac{1}{M_p} \sum_c M_{c p} K_c
+    \end{equation}
+
+    Reemplazando la segunda ecuación en la primera:
+
+    \begin{equation}
+        K_c=\widetilde{M}_{c c}, K_{c t}
+    \end{equation}
+
+    donde
+
+    \begin{equation}
+    \widetilde{M}_{c c \prime}=\sum_p \frac{M_{c p} M_{c \prime p}}{M_c M_p}
+    \end{equation}
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    - Originalmente el cálculo de ECI y PCI se definió mediante un método iterativo llamado  **algoritmo de reflexión** que primero calcula la diversidad y ubicuidad para posteriormente y luego utiliza recursivamente la información de uno para corregir el otro.
+    - Se puede demostrar que el método de reflección es equivalente a encontrar los eigenvalores de la matriz $\widetilde{M}$
+
+    \begin{equation}
+    \tilde{M}=D^{-1} M U^{-1} M^{\prime}
+    \end{equation}
+
+    donde $D$ es la matriz diagonal formada a partir del vector de diversidad y $U$ es la matriz diagonal formada a partir del vector de ubicuidad
+
+    En el contexto de datos de comercio entre países, podemos pensar a $\widetilde{M}$ como una matriz de diversidad-ponderada (o normalizada) que refleja qué tan similares son las canastas exportadoras de los dos países, es decir, que tan similares son sus patrones de especialización.
+
+    De la ecuación anterior podemos ver que:
+
+    \begin{equation}
+    \tilde{M}=D^{-1} S
+    \end{equation}
+
+    donde $S = M U^{-1} M^\prime$ es una matriz de similaridad simétrica en que cada elemento $S_{c c'}$ representa los productos que el pais $c$ tiene en común con el país $c'$, ponderado o normalizado por la inversa de la ubicuidad de cada producto.
+    """)
+    return
+
+
+@app.cell
+def _(D, M, U, np):
+    # Calculamos M tilde cc
+    M_tilde_cc = np.linalg.pinv(D) @ M @ np.linalg.pinv(U) @ M.T
+    M_tilde_cc 
+    return (M_tilde_cc,)
+
+
+@app.cell
+def _(M_df, M_tilde_cc, pd):
+    ### Creamos la matriz de similaridad de ocupaciones
+    matriz_similaridad_ocupaciones = pd.DataFrame(M_tilde_cc, columns=M_df["nombre_sinco_2019"])
+    matriz_similaridad_ocupaciones["nombre_sinco_2019"] = M_df["nombre_sinco_2019"]
+    matriz_similaridad_ocupaciones
+    return (matriz_similaridad_ocupaciones,)
+
+
+@app.cell
+def _(cdata, matriz_similaridad_ocupaciones, pd, pl):
+    similaridad_ocupaciones_eci = pl.from_pandas(
+         pd.melt(matriz_similaridad_ocupaciones, id_vars="nombre_sinco_2019")
+    )
+
+    similaridad_ocupaciones_eci = similaridad_ocupaciones_eci.join(
+        pl.from_pandas(cdata).select("nombre_sinco_2019", "eci").unique(),
+        left_on="variable",
+        right_on="nombre_sinco_2019",
+        how="left"
+    )
+
+    similaridad_ocupaciones_eci = similaridad_ocupaciones_eci.with_columns(
+        pl.col("eci")*pl.col("value")
+    ).group_by("nombre_sinco_2019").agg(
+        pl.col("eci").sum()
+    ).rename({"eci" : "eci_esperado"})
+
+    similaridad_ocupaciones_eci = similaridad_ocupaciones_eci.join(
+        pl.from_pandas(cdata).select("nombre_sinco_2019", "eci", "sinco_3d").rename({"eci" : "eci_original"}).unique(), 
+        on = "nombre_sinco_2019"
+    )
+    similaridad_ocupaciones_eci
+    return (similaridad_ocupaciones_eci,)
+
+
+@app.cell
+def _(matriz_similaridad_ocupaciones, pd, pl, similaridad_ocupaciones_eci):
+    similaridad_weighted_std = pl.from_pandas(
+         pd.melt(matriz_similaridad_ocupaciones, id_vars="nombre_sinco_2019")
+    ).join(
+        similaridad_ocupaciones_eci.select("nombre_sinco_2019", "eci_original").unique(),
+        left_on="variable",
+        right_on="nombre_sinco_2019",
+        how="left"
+    ).join(
+        similaridad_ocupaciones_eci.select("nombre_sinco_2019", "eci_esperado").unique(),
+        left_on="nombre_sinco_2019",
+        right_on="nombre_sinco_2019",
+        how="left"
+    ).with_columns(
+        weighted_std = (
+            pl.col("value")*((pl.col("eci_original")-pl.col("eci_esperado"))**2)
+        )
+    ).group_by("nombre_sinco_2019").agg(
+        pl.col("weighted_std").sum()
+    ).with_columns(
+        pl.col("weighted_std")**(1/2)
+    )
+    similaridad_weighted_std
+    return (similaridad_weighted_std,)
+
+
+@app.cell
+def _(similaridad_ocupaciones_eci, similaridad_weighted_std):
+    similaridad_ocupaciones_eci_std = similaridad_ocupaciones_eci.join(
+        similaridad_weighted_std, 
+        on = "nombre_sinco_2019"
+    ).select("sinco_3d", "nombre_sinco_2019", "eci_original", "eci_esperado", "weighted_std")
+
+    similaridad_ocupaciones_eci_std
+    return (similaridad_ocupaciones_eci_std,)
+
+
+@app.cell
+def _(datos_filename, escala_medicion, similaridad_ocupaciones_eci_std):
+    resultados_eci_esperado = f"{datos_filename}_{escala_medicion}.csv"
+
+    similaridad_ocupaciones_eci_std.write_csv(resultados_eci_esperado)
+    return
+
+
+@app.cell
+def _():
     return
 
 
