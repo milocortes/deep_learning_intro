@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.2"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -135,6 +135,19 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.image(
+        src="images/atencion/atencion_01.png",
+        alt="Marimo logo",
+        width=750,
+        height=350,
+        rounded=True,
+        caption="Representación matricial de oraciones de consulta y llave",
+    ).center()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""
     Estas matrices representan las oraciones de consulta y clave (query and key sentences) en forma de embeddings; cada fila corresponde a una palabra de la oración, y cada columna representa las características del embeddings. Formalmente esas matrices pertenecen al espacio vectorial $\R^{n \times d}$ donde $n$ es el tamaño de la secuencia y $d$ es la dimensión del embedding.
 
@@ -260,6 +273,19 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.image(
+        src="images/atencion/atencion_02.png",
+        alt="Marimo logo",
+        width=800,
+        height=450,
+        rounded=True,
+        caption="Cálculo de la matriz de atención y salida",
+    ).center()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""
     Para calcular la salida de la atención (*attention output*) necesitamos multiplicar la matriz de atención por el valor de los embeddings dando lugar a una representación actualizada de la oración de consulta. En este caso, también se usarán los embeddings de clave como embeddings de valor, de modo que los valores sean iguales a las claves. Esta operación agrega de manera efectiva los embeddings de valor, ponderados por las scores de atención, para generar nuevos embeddings para las palabras de consulta que incorporan información relevante proveniente de la oración clave.
 
@@ -282,7 +308,7 @@ def _(torch):
 
     class DotProductAttention(dl.DeeplayModule):
         """Dot-product attention."""
- 
+
         def __init__(self):
             """Initialize dot-product attention."""
             super().__init__()
@@ -400,6 +426,19 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.image(
+        src="images/atencion/atencion_03.png",
+        alt="Marimo logo",
+        width=750,
+        height=350,
+        rounded=True,
+        caption="Atención entrenable de producto punto",
+    ).center()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""
     La transformación lineal entrenable que genera las matrices de consulta, llave y valor, en esta forma de atención, permiten al modelo ser entrenado al optimizar el mecanismo de atención para una tarea específica.
 
@@ -455,6 +494,19 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
+    mo.image(
+        src="images/atencion/atencion_04.png",
+        alt="Marimo logo",
+        width=750,
+        height=350,
+        rounded=True,
+        caption="Atención multicabezal",
+    ).center()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
     mo.md(r"""
     La atención multicabezal emplea un enfoque paralelismo *divide y vencerás* al distribuir los procesos de atención en múltiples *cabezales de atención*. Cada cabezal atiende independientemente a diferentes partes de la secuencia de insumos, extrayendo distintas características. Esas salidas individuales son posteriormente concatenadas e integradas a una transformación lineal para generar la salida de atención. Este enfoque multifacético permite al modelo obtener una comprensión más profunda y completa de la secuencia de entrada.
 
@@ -470,18 +522,18 @@ def _(dl, torch):
 
     class MultiHeadAttentionLayer(dl.DeeplayModule):
         """"Multi-head attention layer."""
- 
+
         def __init__(self, num_features, num_heads):
             """Initialize multi-head attention."""
             super().__init__()
             self.num_features, self.num_heads = num_features, num_heads
             self.head_dim = num_features // num_heads  # Must be integer
- 
+
             self.Wq = dl.Layer(torch.nn.Linear, num_features, num_features)
             self.Wk = dl.Layer(torch.nn.Linear, num_features, num_features)
             self.Wv = dl.Layer(torch.nn.Linear, num_features, num_features)
             self.Wout = dl.Layer(torch.nn.Linear, num_features, num_features)
- 
+
         def forward(self, in_sequence):
             """Apply the multi-head attention mechanism to the input sequence."""
             seq_len, embed_dim = in_sequence.shape
@@ -491,14 +543,14 @@ def _(dl, torch):
             K = K.view(seq_len, self.num_heads, self.head_dim).permute(1, 0, 2)
             V = self.Wv(in_sequence)
             V = V.view(seq_len, self.num_heads, self.head_dim).permute(1, 0, 2)
- 
+
             attn_scores = (torch.matmul(Q, K.transpose(-2, -1)) 
                            / (self.head_dim ** 0.5))
             attn_weights = torch.nn.functional.softmax(attn_scores, dim=-1)
             attn_output = torch.matmul(attn_weights, V)
             attn_output = attn_output.permute(1, 0, 2).contiguous()
             attn_output = attn_output.view(seq_len, self.num_features)
-    
+
             return self.Wout(attn_output)
 
     return
