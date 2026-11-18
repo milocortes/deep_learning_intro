@@ -476,7 +476,7 @@ def _(dl, torch):
             super().__init__()
             self.num_features, self.num_heads = num_features, num_heads
             self.head_dim = num_features // num_heads  # Must be integer
-     
+ 
             self.Wq = dl.Layer(torch.nn.Linear, num_features, num_features)
             self.Wk = dl.Layer(torch.nn.Linear, num_features, num_features)
             self.Wv = dl.Layer(torch.nn.Linear, num_features, num_features)
@@ -491,16 +491,42 @@ def _(dl, torch):
             K = K.view(seq_len, self.num_heads, self.head_dim).permute(1, 0, 2)
             V = self.Wv(in_sequence)
             V = V.view(seq_len, self.num_heads, self.head_dim).permute(1, 0, 2)
-     
+ 
             attn_scores = (torch.matmul(Q, K.transpose(-2, -1)) 
                            / (self.head_dim ** 0.5))
             attn_weights = torch.nn.functional.softmax(attn_scores, dim=-1)
             attn_output = torch.matmul(attn_weights, V)
             attn_output = attn_output.permute(1, 0, 2).contiguous()
             attn_output = attn_output.view(seq_len, self.num_features)
-        
+    
             return self.Wout(attn_output)
 
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    La implementación es una variación avanzada de la atención por producto punto escalado estandar. La clase toma como argumentos `num_features`, que define la dimensionalidad de la entrada, y `num_heads`, que define el número de cabezales de atención (`num_features` debe ser divisible por `num_heads`, dado que cada cabeza de atención procesa un subconjunto de las características).
+
+    En el método `forward()`, la secuencia de entrada es transformada usando capas lineales (`Wq`, `Wk` y `Wv`). Después que se calculan las matrices de consulta, llave y valor, la rutina *amolda* (reshape) los tensores para ajustarlos a las múltiples cabezales de atención mediante el método `view()`, que divide la entrada en `num_head` partes, cada una con dimensiones iguales a `head_dim`. El método `permute(1, 0, 2)` reordena las dimensiones del tensor al intercambiar la longitud de la secuencia y el número de cabezales, permitiéndole a cada cabezal procesar su porción de la secuencia de forma independiente y en paralelo.
+
+    Posteriormente se calculan los productos punto y los pesos de atención tal como en el mecanismo de atención por producto punto escalado estándar. Tras el procesamiento, las salidas de cada cabezal se concatenan de nuevo y se reordenan en el tamaño y dimensiones originales de la secuencia. Se aplica finalmente una transformación lineal via `Wout` para combinar las salidas de todos los cabezales, produciendo así el resultado final.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Estructura del Transformer
+
+    Los transformers consisten en una apilación de capas, cada una implementando un mecanismo de atención multicabezal seguido por una red neuronal feed-forward (red neuronal completamente conectada). Adicionalmente estas capas son aumentadas con capas de normalización y conexión a residuales para asegurar la estabilidad del gradiente durante el entrenamiento.
+
+    La arquitectura clásica de un Transformer consiste en un modelo codificador-decodificador (encoder-decoder). Similar a la arquitectura seq2seq, el codificador procesa la secuencia de insumo para generar representaciones contextuales, mientras que el decodificador usa esas representaciones para producir la secuencia de salida; generar esta salida puede usarse para traducir la entrada a otro idioma o transformarla en una forma distinta. El decodificador replica la estructura del codificador, pero incluye una capa de atención cruzada adicional que le permite centrarse en partes relevantes de la entrada codificada mientras genera la secuencia de salida.
+
+    Sin embargo, la arquitectura de Transformer es muy flexible : más allá del modelo clásico encoder-decoder, el modelo puede ser diseñado para variantes como *solo codificación* o *solo decodificación*. Estas variantes sirven para distintos objetivos de aprendizaje dependiendo de las características de la tarea a resolver. Por ejemplo, los Transformer *solo-codificación* son adecuados para tareas como la clasificación, dado que se centran en comprender y representar la secuencia de entrada. Por su parte, los transformer *solo-decodificación* son empleados en tareas que implican generación de texto, esto es, para tareas generativas.
+    """)
     return
 
 
