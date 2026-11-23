@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.25.2"
 app = marimo.App(width="medium")
 
 
@@ -27,12 +27,50 @@ def _(mo):
 
     El concepto de atención se ha vuelto fundamental para los **transformers**, una arquitectura de redes neuronales que ha transformado el tratamiento de datos secuenciales, tales como oraciones y series temporales.
 
-    El mecanismo de **autoatención** (*self-attention*) de los Transformers les permite capturar dependencias de largo alcance, lo que conlleva un mejor rendimiento en comparación con modelos anteriores, como las redes neuronales recurrentes.}
+    El mecanismo de **autoatención** (*self-attention*) de los Transformers les permite capturar dependencias de largo alcance, lo que conlleva un mejor rendimiento en comparación con modelos anteriores, como las redes neuronales recurrentes.
 
-    Desde que Google introdujo la arquitectura transformer en 2017, los transformers se han convertido en el modelo de referencia para muchas tareas de procesamiento del lenguaje, entre ellas la traducción de textos (traducción automática), la elaboración de resúmenes de documentos extensos (resumen de textos) y la determinación de si un texto tiene un tono positivo o negativo (análisis de sentimiento).
-
-    Los transformadores también se han utilizado para predecir la estructura de las proteínas a partir de secuencias genéticas (AlphaFold), analizar imágenes (transformadores de visión, o ViTs) y vincular el lenguaje con las imágenes mediante el aprendizaje de conceptos visuales a partir de la supervisión basada en el lenguaje natural (Contrastive Language-Image Pre-training, o CLIP).
+    Google introdujo la arquitectura transformer en 2017:
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/attention_all_you_need.png?raw=true",
+        alt="Marimo logo",
+        width=500,
+        height=500,
+        rounded=True,
+        caption="Attention is all you need. Tomado de https://arxiv.org/abs/1706.03762",
+    ).center()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Los transformers se han convertido en el modelo de referencia para muchas tareas de procesamiento del lenguaje, entre ellas :
+
+    - Traducción de textos (traducción automática),
+    - Elaboración de resúmenes de documentos extensos,
+    - Determinación de si un texto tiene un tono positivo o negativo (análisis de sentimiento).
+
+    Los transformers también se han utilizado para predecir la estructura de las proteínas a partir de secuencias genéticas (AlphaFold), analizar imágenes (transformadores de visión, o ViTs) y vincular el lenguaje con las imágenes mediante el aprendizaje de conceptos visuales a partir de la supervisión basada en el lenguaje natural (Contrastive Language-Image Pre-training, o CLIP).
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/attention_arquitectura.png?raw=true",
+        alt="Marimo logo",
+        width=500,
+        height=550,
+        rounded=True,
+        caption="Arquitectura Transformer. Tomado de https://arxiv.org/abs/1706.03762",
+    ).center()
     return
 
 
@@ -97,6 +135,27 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    /// admonition | Una forma intuitiva de ver queries, keys y values
+
+    Para entender de forma intuitiva los términos *queries*, *keys* y *values*, usemos la siguiente oración :
+
+    <center>The movie was not bad</center>
+
+    La cual exploramos en tres componentes :
+
+    - **Query**. El *query* representa lo que estamos preguntando o buscando. Es como un término de búsqueda. Si estamos interesados en entender la importancia de las relaciones entre "not", "bad" y "movie", podemos pensarlas como nuestras consultas.
+    - **Key**. La *key* representan las características o identificadores para cada palabra en la oración. Las *llaves* (*keys*) determinan qué tan bien cada palabra en la oración responde a la *consulta* (*query*). Si nuestra consulta es "not", entonces las llaves para cada palabra de la oración determinarán cuán relacionadas o reelevantes para esta consulta.
+    - **Value**. El valor contiene el contenido que queremos recuperar o evaluar. Una vez que hemos determinado cuán relevante es cada palabra (a través de su clave) para la consulta, los valores nos proporcionan el contenido real que recuperaríamos o ponderaríamos. En muchas implementaciones, las representaciones de los valores iniciales son simplemente los valores de los embeddings de entrada; sin embargo, a medida que se concatenan capas de atención, estas capturan representaciones contextuales con mayores matices.
+
+    En modelos actuales, todas las palabras de una secuencia actúan simultáneamente como consultas, claves y valores. El mecanismo **self-attention** calcula una suma ponderada de los valores para cada palabra en la oración, basado en los puntajes de atención entre su representación de consulta y todas las representaciones llave en la oración. Esto permite a cada palabra reunir información del resto de palabras en la oración, basado en su reelevancia, para calcular un nuevo embedding *contextual*.
+    ///
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     #### Tokenización y construcción de embeddings
 
     Tokenizaremos las oraciones y convertiremos las palabras a vectores de embeddings.
@@ -136,10 +195,10 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.image(
-        src="images/atencion/atencion_01.png",
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/atencion_01.png?raw=true",
         alt="Marimo logo",
         width=750,
-        height=350,
+        height=400,
         rounded=True,
         caption="Representación matricial de oraciones de consulta y llave",
     ).center()
@@ -264,7 +323,7 @@ def _(mo):
 
     Esta operación da lugar a una matriz de atención en la que cada elemento representa el grado de relevancia o similitud entre una palabra de consulta y una palabra clave. Cuanto mayor sea el valor del producto punto, más similares son las palabras en términos de sus representaciones numéricas. Esta matriz de atención cuantifica de manera efectiva en qué medida cada palabra de la oración de consulta **presta atención** (o se centra en) cada palabra de la oración clave, lo que permite al modelo priorizar la información más relevante al actualizar los embeddings de la consulta con información contextual proveniente de la oración clave.
 
-    Después de calcular el producto punto entre los embeddings de consulta y clave, usualmente se divide la matriz de atención por la raíz cuadrada de la dimensión del embedding ($d$) para ayudar a la estabilización del gradiente cuando se usan vectores de dimensiones altas. Esta división calcula el **producto punto escalado**. Finalmente, es necesario normalizar los scores para convertirlaos en pesos mediante la función softmax.
+    Después de calcular el producto punto entre los embeddings de consulta y clave, usualmente se divide la matriz de atención por la raíz cuadrada de la dimensión del embedding ($d$) para ayudar a la estabilización del gradiente cuando se usan vectores de dimensiones altas. Esta división calcula el **producto punto escalado**. Finalmente, es necesario normalizar los scores para convertirlos en pesos mediante la función softmax.
 
     El proceso completo se ilustra en la siguiente imagen:
     """)
@@ -274,10 +333,10 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.image(
-        src="images/atencion/atencion_02.png",
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/atencion_02.png?raw=true",
         alt="Marimo logo",
         width=800,
-        height=450,
+        height=600,
         rounded=True,
         caption="Cálculo de la matriz de atención y salida",
     ).center()
@@ -407,7 +466,7 @@ def _(mo):
     mo.md(r"""
     Es importante señalar que, en este ejemplo, no existen pesos que puedan aprenderse, ni en las codificaciones de las palabras ni en el propio mecanismo de atención. Por tanto, los resultados reflejan simplemente las relaciones básicas entre los vectores de inmersión (*embeddings*). Estos vectores han sido preentrenados en un corpus extenso y capturan similitudes semánticas entre palabras basándose en sus estadísticas de coocurrencia dentro de dicho corpus. En consecuencia, el mecanismo de atención utiliza aquí estas relaciones fijas, asignando pesos de atención más elevados a aquellas palabras que están semánticamente relacionadas o que aparecen juntas con frecuencia (como «she» y «her»). No obstante, dado que tanto los vectores de inmersión como el mecanismo de atención no han sido ajustados específicamente para la tarea o el conjunto de datos en cuestión, el rendimiento del modelo se ve limitado por las relaciones generales codificadas en GloVe, en lugar de estar adaptado para optimizar el resultado en este caso concreto (por ejemplo, generando un peso de atención bajo entre «her» y «student»).
 
-    Si bien esto resulta razonable para tareas de coincidencia exacta, la verdadera fortaleza del mecanismo de atención reside en modelos capaces de aprender a asignar mayores pesos de atención a aquellas palabras que, según el contexto, resultan relevantes para la consulta. En tales situaciones, la atención ayuda al modelo a centrarse en la información más pertinente, mejorando así su capacidad para comprender y procesar datos.
+    Si bien esto resulta razonable para tareas de coincidencia exacta, **la verdadera fortaleza del mecanismo de atención reside en modelos capaces de aprender a asignar mayores pesos de atención a aquellas palabras que, según el contexto, resultan relevantes para la consulta**. En tales situaciones, la atención ayuda al modelo a centrarse en la información más pertinente, mejorando así su capacidad para comprender y procesar datos.
     """)
     return
 
@@ -427,13 +486,27 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.image(
-        src="images/atencion/atencion_03.png",
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/atencion_03.png?raw=true",
         alt="Marimo logo",
         width=750,
         height=350,
         rounded=True,
         caption="Atención entrenable de producto punto",
     ).center()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Matematicamente se representan como:
+
+    $$
+    Q = X W_Q, \qquad K = X W_K, \qquad V = X W_V,
+    $$
+
+    con matrices de pesos $W_Q, W_K, W_V \in \mathbf{R}^{d \times d}$.
+    """)
     return
 
 
@@ -448,7 +521,28 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(dl, torch):
+    class TrainableAttention(dl.DeeplayModule):
+        """Trainable dot-product attention."""
+
+        def __init__(self, num_in_features=300, num_out_features=256):
+            """Initialize dot-product attention."""
+            super().__init__()
+            self.Wq = torch.nn.Linear(num_in_features, num_out_features)
+            self.Wk = torch.nn.Linear(num_in_features, num_out_features)
+            self.Wv = torch.nn.Linear(num_in_features, num_out_features)
+
+        def forward(self, queries, keys, values):
+            """Calculate dot-product attention with linear transformations."""
+            Q, K, V = self.Wq(queries), self.Wk(keys), self.Wv(values)
+            attn_scores = (torch.matmul(Q, K.transpose(-2, -1))
+                           / (K.size(-1) ** 0.5))
+            attn_matrix = torch.nn.functional.softmax(attn_scores, dim=-1)
+            attn_output = torch.matmul(attn_matrix, V)
+            return attn_output, attn_matrix
+
+
+
     return
 
 
@@ -495,7 +589,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.image(
-        src="images/atencion/atencion_04.png",
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/atencion_04.png?raw=true",
         alt="Marimo logo",
         width=750,
         height=350,
@@ -571,7 +665,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Estructura del Transformer
+    # Estructura del Transformer
 
     Los transformers consisten en una apilación de capas, cada una implementando un mecanismo de atención multicabezal seguido por una red neuronal feed-forward (red neuronal completamente conectada). Adicionalmente estas capas son aumentadas con capas de normalización y conexión a residuales para asegurar la estabilidad del gradiente durante el entrenamiento.
 
@@ -579,6 +673,20 @@ def _(mo):
 
     Sin embargo, la arquitectura de Transformer es muy flexible : más allá del modelo clásico encoder-decoder, el modelo puede ser diseñado para variantes como *solo codificación* o *solo decodificación*. Estas variantes sirven para distintos objetivos de aprendizaje dependiendo de las características de la tarea a resolver. Por ejemplo, los Transformer *solo-codificación* son adecuados para tareas como la clasificación, dado que se centran en comprender y representar la secuencia de entrada. Por su parte, los transformer *solo-decodificación* son empleados en tareas que implican generación de texto, esto es, para tareas generativas.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(
+        src="https://github.com/milocortes/deep_learning_intro/blob/main/images/atencion/attention_arquitectura.png?raw=true",
+        alt="Marimo logo",
+        width=500,
+        height=550,
+        rounded=True,
+        caption="Arquitectura Transformer. Tomado de https://arxiv.org/abs/1706.03762",
+    ).center()
+
     return
 
 
